@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  teams        Team[]
+}
+
+model Team {
+  id        String    @id @default(cuid())
+  name      String
+  season    String?
+  owner     User      @relation(fields: [ownerId], references: [id])
+  ownerId   String
+  createdAt DateTime  @default(now())
+  players   Player[]
+  sessions  Session[]
+}
+
+model Player {
+  id            String      @id @default(cuid())
+  team          Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId        String
+  firstName     String
+  lastName      String
+  jerseyNumber  Int?
+  position      String?
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  statEvents    StatEvent[]
+
+  @@index([teamId])
+}
+
+enum SessionType {
+  PRACTICE
+  MATCH
+  SCRIMMAGE
+}
+
+model Session {
+  id               String      @id @default(cuid())
+  team             Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId           String
+  type             SessionType @default(PRACTICE)
+  date             DateTime    @default(now())
+  opponent         String?
+  notes            String?
+  videoUrl         String?
+  videoDurationSec Float?
+  createdAt        DateTime    @default(now())
+  statEvents       StatEvent[]
+
+  @@index([teamId])
+}
+
+enum ActionType {
+  ATTACK
+  SERVE
+  RECEPTION
+  DIG
+  BLOCK
+  SET
+}
+
+enum ActionResult {
+  SUCCESS
+  ERROR
+  ATTEMPT
+}
+
+model StatEvent {
+  id                 String       @id @default(cuid())
+  session            Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId          String
+  player             Player       @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  playerId           String
+  actionType         ActionType
+  result             ActionResult
+  setNumber          Int?
+  videoTimestampSec  Float?
+  createdAt          DateTime     @default(now())
+
+  @@index([sessionId])
+  @@index([playerId])
+}
