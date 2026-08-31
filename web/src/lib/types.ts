@@ -1,6 +1,7 @@
 export type SessionType = "PRACTICE" | "MATCH" | "SCRIMMAGE";
 export type ActionType = "ATTACK" | "SERVE" | "RECEPTION" | "DIG" | "BLOCK" | "SET";
 export type ActionResult = "SUCCESS" | "ERROR" | "ATTEMPT";
+export type ServingTeam = "OWN" | "OPPONENT";
 
 export interface User {
   id: string;
@@ -47,6 +48,8 @@ export interface StatEvent {
   playerId: string;
   actionType: ActionType;
   result: ActionResult;
+  passRating: number | null;
+  servingTeam: ServingTeam | null;
   setNumber: number | null;
   videoTimestampSec: number | null;
   createdAt: string;
@@ -70,11 +73,25 @@ export interface PlayerMetrics {
   points: number;
   totalErrors: number;
   totalAttempts: number;
+  avgPassRating: number | null;
+}
+
+export interface ServingSplitStat {
+  points: number;
+  attempts: number;
+  pct: number | null;
+}
+
+export interface ServingSplits {
+  pointScoring: ServingSplitStat;
+  sideOut: ServingSplitStat;
 }
 
 export interface SessionReport {
   session: Session;
   team: PlayerMetrics;
+  servingSplits: ServingSplits;
+  bySet: { setNumber: number; team: PlayerMetrics }[];
   players: { player: Player; metrics: PlayerMetrics }[];
 }
 
@@ -89,6 +106,7 @@ export interface TeamWeekly {
   weeks: {
     week: string;
     team: PlayerMetrics;
+    servingSplits: ServingSplits;
     topPerformers: { player: Player; metrics: PlayerMetrics }[];
   }[];
 }

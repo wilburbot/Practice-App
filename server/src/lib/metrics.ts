@@ -1,8 +1,10 @@
-import type { ActionResult, ActionType } from "@prisma/client";
+import type { ActionResult, ActionType, ServingTeam } from "@prisma/client";
 
 export interface StatEventLike {
   actionType: ActionType;
   result: ActionResult;
+  passRating?: number | null;
+  servingTeam?: ServingTeam | null;
 }
 
 export interface ActionMetrics {
@@ -25,6 +27,8 @@ export interface PlayerMetrics {
   /** Total errors across every action type */
   totalErrors: number;
   totalAttempts: number;
+  /** Average 0-3 passer rating on RECEPTION events that were graded, null if none graded */
+  avgPassRating: number | null;
 }
 
 const ACTION_TYPES: ActionType[] = ["ATTACK", "SERVE", "RECEPTION", "DIG", "BLOCK", "SET"];
@@ -39,11 +43,18 @@ export function computeMetrics(events: StatEventLike[]): PlayerMetrics {
     ActionMetrics
   >;
 
+  let passRatingSum = 0;
+  let passRatingCount = 0;
+
   for (const event of events) {
     const bucket = byType[event.actionType];
     bucket.attempts += 1;
     if (event.result === "SUCCESS") bucket.success += 1;
     if (event.result === "ERROR") bucket.error += 1;
+    if (event.actionType === "RECEPTION" && event.passRating != null) {
+      passRatingSum += event.passRating;
+      passRatingCount += 1;
+    }
   }
 
   for (const type of ACTION_TYPES) {
@@ -54,12 +65,66 @@ export function computeMetrics(events: StatEventLike[]): PlayerMetrics {
   const points = byType.ATTACK.success + byType.SERVE.success + byType.BLOCK.success;
   const totalErrors = ACTION_TYPES.reduce((sum, t) => sum + byType[t].error, 0);
   const totalAttempts = ACTION_TYPES.reduce((sum, t) => sum + byType[t].attempts, 0);
+  const avgPassRating = passRatingCount > 0 ? passRatingSum / passRatingCount : null;
 
   return {
     ...(byType as PlayerMetrics),
     points,
     totalErrors,
     totalAttempts,
+    avgPassRating,
+  };
+}
+
+export interface ServingSplitStat {
+  points: number;
+  attempts: number;
+  pct: number | null;
+}
+
+export interface ServingSplits {
+  /** "Point-scoring %" — points won per rally while this team served */
+  pointScoring: ServingSplitStat;
+  /** "Side-out %" — points won per rally while this team was receiving */
+  sideOut: ServingSplitStat;
+}
+
+/**
+ * Requires the coach to flip a serving-team toggle live so each event is tagged with who
+ * served that rally. One SERVE event = one rally started on our serve; one RECEPTION event =
+ * one rally started on the opponent's serve — so those attempt counts double as rally counts.
+ */
+export function computeServingSplits(events: StatEventLike[]): ServingSplits {
+  let ownServeAttempts = 0;
+  let ownServePoints = 0;
+  let receiveAttempts = 0;
+  let receivePoints = 0;
+
+  for (const event of events) {
+    if (event.servingTeam === "OWN") {
+      if (event.actionType === "SERVE") ownServeAttempts += 1;
+      if (event.result === "SUCCESS" && (event.actionType === "SERVE" || event.actionType === "ATTACK" || event.actionType === "BLOCK")) {
+        ownServePoints += 1;
+      }
+    } else if (event.servingTeam === "OPPONENT") {
+      if (event.actionType === "RECEPTION") receiveAttempts += 1;
+      if (event.result === "SUCCESS" && (event.actionType === "ATTACK" || event.actionType === "BLOCK")) {
+        receivePoints += 1;
+      }
+    }
+  }
+
+  return {
+    pointScoring: {
+      points: ownServePoints,
+      attempts: ownServeAttempts,
+      pct: ownServeAttempts > 0 ? ownServePoints / ownServeAttempts : null,
+    },
+    sideOut: {
+      points: receivePoints,
+      attempts: receiveAttempts,
+      pct: receiveAttempts > 0 ? receivePoints / receiveAttempts : null,
+    },
   };
 }
 

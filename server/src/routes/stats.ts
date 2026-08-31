@@ -9,12 +9,15 @@ statsRouter.use(requireAuth);
 
 const ACTION_TYPES = ["ATTACK", "SERVE", "RECEPTION", "DIG", "BLOCK", "SET"] as const;
 const RESULTS = ["SUCCESS", "ERROR", "ATTEMPT"] as const;
+const SERVING_TEAMS = ["OWN", "OPPONENT"] as const;
 
 const statEventSchema = z.object({
   sessionId: z.string().min(1),
   playerId: z.string().min(1),
   actionType: z.enum(ACTION_TYPES),
   result: z.enum(RESULTS),
+  passRating: z.number().int().min(0).max(3).optional().nullable(),
+  servingTeam: z.enum(SERVING_TEAMS).optional().nullable(),
   setNumber: z.number().int().min(1).max(10).optional().nullable(),
   videoTimestampSec: z.number().min(0).optional().nullable(),
 });

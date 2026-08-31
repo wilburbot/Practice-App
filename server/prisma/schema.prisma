@@ -79,6 +79,11 @@ enum ActionResult {
   ATTEMPT
 }
 
+enum ServingTeam {
+  OWN
+  OPPONENT
+}
+
 model StatEvent {
   id                 String       @id @default(cuid())
   session            Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -87,6 +92,10 @@ model StatEvent {
   playerId           String
   actionType         ActionType
   result             ActionResult
+  /// 0-3 passer rating, only set when actionType is RECEPTION (0 = ace against, 3 = perfect pass)
+  passRating         Int?
+  /// which team was serving when this happened, used for point-scoring % / side-out %
+  servingTeam        ServingTeam?
   setNumber          Int?
   videoTimestampSec  Float?
   createdAt          DateTime     @default(now())

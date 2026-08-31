@@ -5,6 +5,11 @@ function fmtPct(value: number | null): string {
   return `${(value * 100).toFixed(0)}%`;
 }
 
+function fmtRating(value: number | null): string {
+  if (value === null) return "—";
+  return value.toFixed(1);
+}
+
 export function MetricsTable({
   rows,
 }: {
@@ -21,6 +26,7 @@ export function MetricsTable({
             <th className="py-2 px-2 text-right">Att Eff</th>
             <th className="py-2 px-2 text-right">Aces</th>
             <th className="py-2 px-2 text-right">Srv Err</th>
+            <th className="py-2 px-2 text-right">Pass Rtg</th>
             <th className="py-2 px-2 text-right">Digs</th>
             <th className="py-2 px-2 text-right">Blocks</th>
             <th className="py-2 px-2 text-right">Assists</th>
@@ -44,6 +50,7 @@ export function MetricsTable({
               <td className="py-2 px-2 text-right">{fmtPct(row.metrics.ATTACK.efficiency)}</td>
               <td className="py-2 px-2 text-right">{row.metrics.SERVE.success}</td>
               <td className="py-2 px-2 text-right">{row.metrics.SERVE.error}</td>
+              <td className="py-2 px-2 text-right">{fmtRating(row.metrics.avgPassRating)}</td>
               <td className="py-2 px-2 text-right">{row.metrics.DIG.success}</td>
               <td className="py-2 px-2 text-right">{row.metrics.BLOCK.success}</td>
               <td className="py-2 px-2 text-right">{row.metrics.SET.success}</td>
@@ -52,7 +59,7 @@ export function MetricsTable({
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={10} className="py-4 text-center text-slate-400">
+              <td colSpan={11} className="py-4 text-center text-slate-400">
                 No stats logged yet.
               </td>
             </tr>

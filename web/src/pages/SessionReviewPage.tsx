@@ -29,8 +29,10 @@ export function SessionReviewPage() {
 
   if (isLoading || !report) return <p className="p-6">Loading…</p>;
 
-  const { session, team, players } = report;
+  const { session, team, servingSplits, bySet, players } = report;
   const markers = (events ?? []).filter((e) => e.videoTimestampSec != null);
+  const hasServingData = servingSplits.pointScoring.attempts > 0 || servingSplits.sideOut.attempts > 0;
+  const fmtPct = (v: number | null) => (v === null ? "—" : `${(v * 100).toFixed(0)}%`);
 
   return (
     <div className="p-4 max-w-5xl mx-auto flex flex-col gap-6">
@@ -69,6 +71,40 @@ export function SessionReviewPage() {
         <h2 className="font-semibold text-court-dark mb-3">Team Totals</h2>
         <MetricsTable rows={[{ label: session.type === "MATCH" ? "Team (match)" : "Team (practice)", metrics: team }]} />
       </div>
+
+      {hasServingData && (
+        <div className="bg-white border rounded-xl p-4">
+          <h2 className="font-semibold text-court-dark mb-3">Serving Splits</h2>
+          <div className="grid grid-cols-2 gap-4 text-center">
+            <div>
+              <p className="text-3xl font-bold text-court-dark">{fmtPct(servingSplits.pointScoring.pct)}</p>
+              <p className="text-sm text-slate-500">
+                Point-Scoring % ({servingSplits.pointScoring.points}/{servingSplits.pointScoring.attempts} own-serve rallies)
+              </p>
+            </div>
+            <div>
+              <p className="text-3xl font-bold text-court-dark">{fmtPct(servingSplits.sideOut.pct)}</p>
+              <p className="text-sm text-slate-500">
+                Side-Out % ({servingSplits.sideOut.points}/{servingSplits.sideOut.attempts} receiving rallies)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bySet.length > 1 && (
+        <div className="bg-white border rounded-xl p-4">
+          <h2 className="font-semibold text-court-dark mb-3">By Set</h2>
+          <div className="flex flex-col gap-4">
+            {bySet.map((s) => (
+              <div key={s.setNumber}>
+                <h3 className="text-sm font-semibold text-slate-500 mb-2">Set {s.setNumber}</h3>
+                <MetricsTable rows={[{ label: `Set ${s.setNumber}`, metrics: s.team }]} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white border rounded-xl p-4">
         <h2 className="font-semibold text-court-dark mb-3">Box Score</h2>

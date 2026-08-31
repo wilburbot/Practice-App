@@ -2,7 +2,7 @@ import { Router } from "express";
 import { prisma } from "../db.js";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
 import { findOwnedPlayer, findOwnedSession, findOwnedTeam } from "../lib/ownership.js";
-import { computeMetrics, isoWeekKey } from "../lib/metrics.js";
+import { computeMetrics, computeServingSplits, isoWeekKey } from "../lib/metrics.js";
 
 export const reportsRouter = Router();
 reportsRouter.use(requireAuth);
@@ -31,9 +31,22 @@ reportsRouter.get("/session/:sessionId", async (req: AuthedRequest, res) => {
     }))
     .sort((a, b) => b.metrics.points - a.metrics.points);
 
+  const bySetMap = new Map<number, typeof events>();
+  for (const event of events) {
+    const setNumber = event.setNumber ?? 1;
+    const bucket = bySetMap.get(setNumber) ?? [];
+    bucket.push(event);
+    bySetMap.set(setNumber, bucket);
+  }
+  const bySet = [...bySetMap.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([setNumber, setEvents]) => ({ setNumber, team: computeMetrics(setEvents) }));
+
   res.json({
     session,
     team: computeMetrics(events),
+    servingSplits: computeServingSplits(events),
+    bySet,
     players,
   });
 });
@@ -100,7 +113,12 @@ reportsRouter.get("/team/:teamId/weekly", async (req: AuthedRequest, res) => {
         .sort((a, b) => b.metrics.points - a.metrics.points)
         .slice(0, 3);
 
-      return { week, team: computeMetrics(weekEvents), topPerformers };
+      return {
+        week,
+        team: computeMetrics(weekEvents),
+        servingSplits: computeServingSplits(weekEvents),
+        topPerformers,
+      };
     });
 
   res.json({ team, weeks });

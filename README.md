@@ -88,8 +88,11 @@ ephemeral, so if you're deploying long-term, mount a persistent volume there —
 - Each **Session** can have one attached video recording
 - Each **StatEvent** ties a player + session to an `actionType` (Attack/Serve/Reception/Dig/Block/Set) and a
   `result` (Success/Error/Attempt), plus an optional timestamp into the session's video
-- All metrics (kills, efficiency %, points, etc.) are computed on the fly from these raw events — see
-  `server/src/lib/metrics.ts`
+- Reception events also carry a `passRating` (0-3, BallTime-style passer grading: 0 = ace against, 3 = perfect
+  pass) and, on matches, a `servingTeam` (Own/Opponent) the coach toggles live so point-scoring % and side-out %
+  can be computed, plus a `setNumber` for per-set box scores
+- All metrics (kills, efficiency %, passer rating, points, etc.) are computed on the fly from these raw events —
+  see `server/src/lib/metrics.ts`
 
 ## Notes & next steps
 

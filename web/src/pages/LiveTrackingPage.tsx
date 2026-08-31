@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
-import type { Player, Session, StatEvent } from "../lib/types";
-import { ACTION_GROUPS } from "../lib/actions";
+import type { Player, ServingTeam, Session, StatEvent } from "../lib/types";
+import { ACTION_GROUPS, type ActionButton } from "../lib/actions";
 import { useCamera } from "../hooks/useCamera";
 
 export function LiveTrackingPage() {
@@ -14,6 +14,8 @@ export function LiveTrackingPage() {
   const camera = useCamera();
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [currentSet, setCurrentSet] = useState(1);
+  const [servingTeam, setServingTeam] = useState<ServingTeam>("OWN");
 
   const { data: session } = useQuery({
     queryKey: ["session", sessionId],
@@ -35,12 +37,15 @@ export function LiveTrackingPage() {
   });
 
   const logEvent = useMutation({
-    mutationFn: (input: { actionType: string; result: string }) =>
+    mutationFn: (input: ActionButton) =>
       api.post<StatEvent>("/stats", {
         sessionId,
         playerId: selectedPlayerId,
         actionType: input.actionType,
         result: input.result,
+        passRating: input.passRating ?? null,
+        servingTeam: session?.type === "MATCH" ? servingTeam : null,
+        setNumber: session?.type === "MATCH" ? currentSet : null,
         videoTimestampSec: camera.elapsedSeconds(),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stats", sessionId] }),
@@ -147,6 +152,48 @@ export function LiveTrackingPage() {
         </p>
       </div>
 
+      {/* Set + serving toggle (matches only) */}
+      {session.type === "MATCH" && (
+        <div className="bg-white border rounded-xl p-3 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-500">Set</span>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                onClick={() => setCurrentSet(n)}
+                className={`tap-target rounded-full w-10 h-10 font-semibold border ${
+                  currentSet === n ? "bg-court text-white border-court" : "bg-white"
+                }`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-slate-500">Serving</span>
+            <button
+              onClick={() => setServingTeam("OWN")}
+              className={`tap-target rounded-lg px-3 py-2 text-sm font-semibold border ${
+                servingTeam === "OWN" ? "bg-court text-white border-court" : "bg-white"
+              }`}
+            >
+              We're Serving
+            </button>
+            <button
+              onClick={() => setServingTeam("OPPONENT")}
+              className={`tap-target rounded-lg px-3 py-2 text-sm font-semibold border ${
+                servingTeam === "OPPONENT" ? "bg-court text-white border-court" : "bg-white"
+              }`}
+            >
+              They're Serving
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 w-full">
+            Flip this every time the serve changes hands — it's what powers point-scoring % and side-out %.
+          </p>
+        </div>
+      )}
+
       {/* Player selector */}
       <div className="flex flex-wrap gap-2">
         {activePlayers.map((player) => (
@@ -205,6 +252,7 @@ export function LiveTrackingPage() {
             >
               <span>
                 {findPlayerLabel(event.playerId)} — {event.actionType} / {event.result}
+                {event.passRating != null && ` (pass ${event.passRating})`}
               </span>
               <span className="text-slate-400 text-xs">✕ remove</span>
             </button>

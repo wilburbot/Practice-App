@@ -5,6 +5,8 @@ export interface ActionButton {
   result: ActionResult;
   label: string;
   className: string;
+  /** 0-3 passer rating, only set on RECEPTION buttons */
+  passRating?: number;
 }
 
 // Standard box-score actions, grouped by skill, for one-tap logging during live play.
@@ -26,10 +28,12 @@ export const ACTION_GROUPS: { title: string; buttons: ActionButton[] }[] = [
     ],
   },
   {
-    title: "Reception",
+    title: "Reception (Passer Rating)",
     buttons: [
-      { actionType: "RECEPTION", result: "SUCCESS", label: "Good Pass", className: "bg-emerald-600" },
-      { actionType: "RECEPTION", result: "ERROR", label: "Error", className: "bg-red-600" },
+      { actionType: "RECEPTION", result: "SUCCESS", label: "Perfect (3)", className: "bg-emerald-600", passRating: 3 },
+      { actionType: "RECEPTION", result: "SUCCESS", label: "Good (2)", className: "bg-emerald-500", passRating: 2 },
+      { actionType: "RECEPTION", result: "SUCCESS", label: "Poor (1)", className: "bg-amber-600", passRating: 1 },
+      { actionType: "RECEPTION", result: "ERROR", label: "Ace Against (0)", className: "bg-red-600", passRating: 0 },
     ],
   },
   {
