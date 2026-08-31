@@ -31,7 +31,9 @@ export function SessionReviewPage() {
   const seekTo = (event: StatEvent) => {
     if (event.videoTimestampSec == null || !videoRef.current) return;
     videoRef.current.currentTime = event.videoTimestampSec;
-    videoRef.current.play();
+    // Tapping another marker before this play() resolves rejects the promise with a benign
+    // "interrupted by a new load request" error — expected when jumping between plays quickly.
+    videoRef.current.play().catch(() => {});
   };
 
   const markers = [...(events ?? [])]
