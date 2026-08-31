@@ -1,17 +1,35 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Navigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "../lib/api";
 import { useCurrentTeam } from "../lib/team";
-import type { TeamWeekly } from "../lib/types";
+import type { Player, TeamWeekly } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
 
 export function TeamDashboardPage() {
   const { teamId } = useCurrentTeam();
+  const [position, setPosition] = useState("");
+  const [playerId, setPlayerId] = useState("");
+
+  const { data: players } = useQuery({
+    queryKey: ["players", teamId],
+    queryFn: () => api.get<Player[]>(`/players?teamId=${teamId}`),
+    enabled: !!teamId,
+  });
+
+  const positions = useMemo(
+    () => [...new Set((players ?? []).map((p) => p.position).filter((p): p is string => !!p))].sort(),
+    [players],
+  );
+
+  const params = new URLSearchParams();
+  if (position) params.set("position", position);
+  if (playerId) params.set("playerId", playerId);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["team-weekly", teamId],
-    queryFn: () => api.get<TeamWeekly>(`/reports/team/${teamId}/weekly`),
+    queryKey: ["team-weekly", teamId, position, playerId],
+    queryFn: () => api.get<TeamWeekly>(`/reports/team/${teamId}/weekly?${params.toString()}`),
     enabled: !!teamId,
   });
 
@@ -32,8 +50,57 @@ export function TeamDashboardPage() {
         <p className="text-sm text-slate-500">Weekly reporting across all logged practices and matches</p>
       </div>
 
+      <div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3 items-center">
+        <label className="flex items-center gap-2 text-sm">
+          <span className="font-semibold text-slate-500">Position</span>
+          <select
+            className="tap-target border rounded-lg px-3 py-2"
+            value={position}
+            onChange={(e) => setPosition(e.target.value)}
+          >
+            <option value="">All positions</option>
+            {positions.map((pos) => (
+              <option key={pos} value={pos}>
+                {pos}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <span className="font-semibold text-slate-500">Player</span>
+          <select
+            className="tap-target border rounded-lg px-3 py-2"
+            value={playerId}
+            onChange={(e) => setPlayerId(e.target.value)}
+          >
+            <option value="">All players</option>
+            {(players ?? []).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.jerseyNumber != null ? `#${p.jerseyNumber} ` : ""}
+                {p.firstName} {p.lastName}
+              </option>
+            ))}
+          </select>
+        </label>
+        {(position || playerId) && (
+          <button
+            onClick={() => {
+              setPosition("");
+              setPlayerId("");
+            }}
+            className="tap-target text-sm text-court underline"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+
       {weeks.length === 0 ? (
-        <p className="text-slate-500">No sessions logged yet — the weekly report builds itself as you track stats.</p>
+        <p className="text-slate-500">
+          {position || playerId
+            ? "No stats match this filter yet."
+            : "No sessions logged yet — the weekly report builds itself as you track stats."}
+        </p>
       ) : (
         <>
           <div className="bg-white border rounded-xl p-4">
@@ -55,8 +122,10 @@ export function TeamDashboardPage() {
             {[...weeks].reverse().map((w) => (
               <div key={w.week} className="bg-white border rounded-xl p-4">
                 <h3 className="font-semibold text-court-dark mb-2">Week {w.week}</h3>
-                <MetricsTable rows={[{ label: "Team", metrics: w.team }]} />
-                {w.topPerformers.length > 0 && (
+                <MetricsTable
+                  rows={[{ label: playerId ? "Player" : position ? `${position}s` : "Team", metrics: w.team }]}
+                />
+                {!playerId && w.topPerformers.length > 0 && (
                   <div className="mt-3">
                     <h4 className="text-sm font-semibold text-slate-500 mb-1">Top Performers</h4>
                     <ul className="text-sm flex flex-col gap-1">

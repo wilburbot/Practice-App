@@ -15,7 +15,7 @@ playersRouter.get("/", async (req: AuthedRequest, res) => {
 
   const players = await prisma.player.findMany({
     where: { teamId },
-    orderBy: [{ active: "desc" }, { lastName: "asc" }],
+    orderBy: [{ active: "desc" }, { jerseyNumber: { sort: "asc", nulls: "last" } }, { lastName: "asc" }],
   });
   res.json(players);
 });

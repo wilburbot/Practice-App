@@ -78,12 +78,20 @@ reportsRouter.get("/player/:playerId/progress", async (req: AuthedRequest, res) 
 });
 
 // Team-wide weekly rollup: totals per week plus that week's top performers.
+// Optionally scoped to one player and/or one position via query params.
 reportsRouter.get("/team/:teamId/weekly", async (req: AuthedRequest, res) => {
   const team = await findOwnedTeam(req.params.teamId, req.userId!);
   if (!team) return res.status(404).json({ error: "Team not found" });
 
+  const playerId = req.query.playerId as string | undefined;
+  const position = req.query.position as string | undefined;
+
   const events = await prisma.statEvent.findMany({
-    where: { session: { teamId: team.id } },
+    where: {
+      session: { teamId: team.id },
+      ...(playerId ? { playerId } : {}),
+      ...(position ? { player: { position } } : {}),
+    },
     include: { session: true, player: true },
     orderBy: { createdAt: "asc" },
   });
