@@ -31,9 +31,9 @@ export function JoinTeamPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-full flex items-center justify-center bg-court-dark px-4">
-        <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 text-center">
-          <h1 className="text-xl font-bold text-court-dark mb-2">You've been invited to coach</h1>
+      <div className="min-h-full flex items-center justify-center bg-slate-50 px-4">
+        <div className="w-full max-w-sm bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center">
+          <h1 className="text-xl font-bold text-slate-900 mb-2">You've been invited to coach</h1>
           <p className="text-slate-500 mb-6">Log in or create an account to accept and get edit access to this team.</p>
           <Link to="/login" className="tap-target block bg-court text-white rounded-lg py-2 font-semibold">
             Log In / Sign Up
@@ -44,9 +44,9 @@ export function JoinTeamPage() {
   }
 
   return (
-    <div className="min-h-full flex items-center justify-center bg-court-dark px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 text-center">
-        <h1 className="text-xl font-bold text-court-dark mb-2">Join as a Coach</h1>
+    <div className="min-h-full flex items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-sm bg-white border border-slate-200 rounded-2xl shadow-sm p-6 text-center">
+        <h1 className="text-xl font-bold text-slate-900 mb-2">Join as a Coach</h1>
         <p className="text-slate-500 mb-6">
           Accepting gives you full edit access — you'll be able to log stats live, manage the roster, and start
           sessions alongside the other coaches.

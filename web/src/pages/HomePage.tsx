@@ -81,17 +81,29 @@ export function HomePage() {
 
       {currentTeam && (
         <div className="grid grid-cols-2 gap-3 mt-4">
-          <Link to="/roster" className="tap-target bg-court-dark text-white rounded-xl p-5 text-center font-semibold">
+          <Link
+            to="/roster"
+            className="tap-target bg-white border border-slate-200 rounded-xl p-5 text-center font-semibold text-slate-900 hover:border-court hover:text-court"
+          >
             Manage Roster
           </Link>
-          <Link to="/sessions" className="tap-target bg-court text-white rounded-xl p-5 text-center font-semibold">
+          <Link
+            to="/sessions"
+            className="tap-target bg-court text-white rounded-xl p-5 text-center font-semibold"
+          >
             Start / View Sessions
           </Link>
           <Link
             to="/team"
-            className="tap-target bg-emerald-700 text-white rounded-xl p-5 text-center font-semibold col-span-2"
+            className="tap-target bg-white border border-slate-200 rounded-xl p-5 text-center font-semibold text-slate-900 hover:border-court hover:text-court"
           >
             Team Dashboard & Weekly Report
+          </Link>
+          <Link
+            to="/team/skills"
+            className="tap-target bg-white border border-slate-200 rounded-xl p-5 text-center font-semibold text-slate-900 hover:border-court hover:text-court"
+          >
+            Skill Breakdown
           </Link>
         </div>
       )}

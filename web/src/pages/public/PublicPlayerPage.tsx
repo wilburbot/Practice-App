@@ -92,7 +92,7 @@ export function PublicPlayerPage() {
                 <XAxis dataKey="week" />
                 <YAxis unit="%" />
                 <Tooltip />
-                <Line type="monotone" dataKey="Attack Eff %" stroke="#1e3a8a" strokeWidth={2} connectNulls />
+                <Line type="monotone" dataKey="Attack Eff %" stroke="#ea580c" strokeWidth={2} connectNulls />
               </LineChart>
             </ResponsiveContainer>
           </div>

@@ -75,9 +75,9 @@ export function WeeklyComparisonCard({
           <YAxis allowDecimals={false} />
           <Tooltip />
           <Legend />
-          <Bar dataKey="This Week" fill="#1e3a8a" />
-          {lastWeek && <Bar dataKey="Last Week" fill="#94a3b8" />}
-          <Bar dataKey="Season Avg" fill="#059669" />
+          <Bar dataKey="This Week" fill="#ea580c" />
+          {lastWeek && <Bar dataKey="Last Week" fill="#e2e8f0" />}
+          <Bar dataKey="Season Avg" fill="#475569" />
         </BarChart>
       </ResponsiveContainer>
 

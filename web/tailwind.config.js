@@ -5,8 +5,9 @@ export default {
     extend: {
       colors: {
         court: {
-          DEFAULT: "#1e3a8a",
+          DEFAULT: "#ea580c",
           dark: "#0f172a",
+          light: "#fff7ed",
         },
       },
     },

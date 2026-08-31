@@ -33,9 +33,9 @@ export function AuthPage() {
   };
 
   return (
-    <div className="min-h-full flex items-center justify-center bg-court-dark px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-xl p-6">
-        <h1 className="text-2xl font-bold text-court-dark mb-1">🏐 VB Coach</h1>
+    <div className="min-h-full flex items-center justify-center bg-slate-50 px-4">
+      <div className="w-full max-w-sm bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+        <h1 className="text-2xl font-bold text-slate-900 mb-1">🏐 VB Coach</h1>
         <p className="text-sm text-slate-500 mb-6">
           Live stat tracking, video, and progress reports for your team.
         </p>

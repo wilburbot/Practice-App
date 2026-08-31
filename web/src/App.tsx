@@ -11,9 +11,11 @@ import { LiveTrackingPage } from "./pages/LiveTrackingPage";
 import { SessionReviewPage } from "./pages/SessionReviewPage";
 import { PlayerProgressPage } from "./pages/PlayerProgressPage";
 import { TeamDashboardPage } from "./pages/TeamDashboardPage";
+import { SkillDashboardPage } from "./pages/SkillDashboardPage";
 import { PublicTeamPage } from "./pages/public/PublicTeamPage";
 import { PublicSessionPage } from "./pages/public/PublicSessionPage";
 import { PublicPlayerPage } from "./pages/public/PublicPlayerPage";
+import { PublicSkillsPage } from "./pages/public/PublicSkillsPage";
 
 function AppLayout() {
   return (
@@ -28,6 +30,7 @@ function AppLayout() {
           <Route path="/sessions/:sessionId" element={<SessionReviewPage />} />
           <Route path="/players/:playerId" element={<PlayerProgressPage />} />
           <Route path="/team" element={<TeamDashboardPage />} />
+          <Route path="/team/skills" element={<SkillDashboardPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -44,6 +47,7 @@ export default function App() {
         <Route index element={<PublicTeamPage />} />
         <Route path="sessions/:sessionId" element={<PublicSessionPage />} />
         <Route path="players/:playerId" element={<PublicPlayerPage />} />
+        <Route path="skills" element={<PublicSkillsPage />} />
       </Route>
       <Route element={<ProtectedRoute />}>
         <Route path="/*" element={<AppLayout />} />

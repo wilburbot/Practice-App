@@ -1,6 +1,8 @@
-import type { Player, Session } from "@prisma/client";
+import type { ActionType, Player, Session } from "@prisma/client";
 import { prisma } from "../db.js";
 import { computeCourtTendencies, computeMetrics, computeServingSplits, isoWeekKey } from "./metrics.js";
+
+const ACTION_TYPES: ActionType[] = ["ATTACK", "SERVE", "RECEPTION", "DIG", "BLOCK", "SET"];
 
 /** Full box score for one session: per-player metrics + team totals. Caller must have already verified access to `session`. */
 export async function buildSessionReport(session: Session) {
@@ -120,4 +122,48 @@ export async function buildTeamWeekly(
     });
 
   return { weeks };
+}
+
+/**
+ * Per-skill breakdown for a team's whole season: how often each result happened (for a pie chart)
+ * and which players account for the most success on that skill (for a bar chart).
+ */
+export async function buildSkillBreakdown(
+  teamId: string,
+  filters: { playerId?: string; position?: string } = {},
+) {
+  const events = await prisma.statEvent.findMany({
+    where: {
+      session: { teamId },
+      ...(filters.playerId ? { playerId: filters.playerId } : {}),
+      ...(filters.position ? { player: { position: filters.position } } : {}),
+    },
+    include: { player: true },
+  });
+
+  const skills = ACTION_TYPES.map((actionType) => {
+    const skillEvents = events.filter((e) => e.actionType === actionType);
+    const resultBreakdown = {
+      SUCCESS: skillEvents.filter((e) => e.result === "SUCCESS").length,
+      ERROR: skillEvents.filter((e) => e.result === "ERROR").length,
+      ATTEMPT: skillEvents.filter((e) => e.result === "ATTEMPT").length,
+    };
+
+    const byPlayerMap = new Map<
+      string,
+      { player: (typeof skillEvents)[number]["player"]; success: number; error: number; attempts: number }
+    >();
+    for (const event of skillEvents) {
+      const bucket = byPlayerMap.get(event.playerId) ?? { player: event.player, success: 0, error: 0, attempts: 0 };
+      bucket.attempts += 1;
+      if (event.result === "SUCCESS") bucket.success += 1;
+      if (event.result === "ERROR") bucket.error += 1;
+      byPlayerMap.set(event.playerId, bucket);
+    }
+    const byPlayer = [...byPlayerMap.values()].sort((a, b) => b.success - a.success);
+
+    return { actionType, attempts: skillEvents.length, resultBreakdown, byPlayer };
+  });
+
+  return { skills };
 }

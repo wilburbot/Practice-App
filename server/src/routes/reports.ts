@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
 import { findOwnedPlayer, findOwnedSession, findOwnedTeam } from "../lib/ownership.js";
-import { buildPlayerProgress, buildSessionReport, buildTeamWeekly } from "../lib/reportQueries.js";
+import { buildPlayerProgress, buildSessionReport, buildSkillBreakdown, buildTeamWeekly } from "../lib/reportQueries.js";
 
 export const reportsRouter = Router();
 reportsRouter.use(requireAuth);
@@ -31,4 +31,17 @@ reportsRouter.get("/team/:teamId/weekly", async (req: AuthedRequest, res) => {
 
   const { weeks } = await buildTeamWeekly(team.id, { playerId, position });
   res.json({ team, weeks });
+});
+
+// Per-skill breakdown (Attack/Serve/Reception/Dig/Block/Set) for the whole season.
+// Optionally scoped to one player and/or one position via query params.
+reportsRouter.get("/team/:teamId/skills", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeam(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found" });
+
+  const playerId = req.query.playerId as string | undefined;
+  const position = req.query.position as string | undefined;
+
+  const breakdown = await buildSkillBreakdown(team.id, { playerId, position });
+  res.json({ team, ...breakdown });
 });

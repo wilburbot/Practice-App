@@ -15,9 +15,9 @@ export function PublicLayout() {
 
   return (
     <div className="min-h-full flex flex-col">
-      <header className="bg-court-dark text-white px-4 py-3">
-        <span className="font-bold text-lg tracking-tight">🏐 {team?.name ?? "VB Coach"}</span>
-        <span className="ml-2 text-sm text-slate-300">Player &amp; parent view (read-only)</span>
+      <header className="bg-white border-b border-slate-200 px-4 py-3">
+        <span className="font-bold text-lg tracking-tight text-slate-900">🏐 {team?.name ?? "VB Coach"}</span>
+        <span className="ml-2 text-sm text-slate-500">Player &amp; parent view (read-only)</span>
       </header>
       <main className="flex-1 bg-slate-50">
         {isError ? (

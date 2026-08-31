@@ -150,3 +150,28 @@ export interface TeamWeekly {
     topPerformers: { player: Player; metrics: PlayerMetrics }[];
   }[];
 }
+
+export interface SkillResultBreakdown {
+  SUCCESS: number;
+  ERROR: number;
+  ATTEMPT: number;
+}
+
+export interface SkillPlayerStat {
+  player: Player;
+  success: number;
+  error: number;
+  attempts: number;
+}
+
+export interface SkillBreakdownEntry {
+  actionType: ActionType;
+  attempts: number;
+  resultBreakdown: SkillResultBreakdown;
+  byPlayer: SkillPlayerStat[];
+}
+
+export interface TeamSkillBreakdown {
+  team: Team | PublicTeam;
+  skills: SkillBreakdownEntry[];
+}

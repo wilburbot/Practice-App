@@ -47,6 +47,12 @@ export function PublicTeamPage() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto flex flex-col gap-6">
+      <div className="flex justify-end">
+        <Link to={`/share/${shareToken}/skills`} className="tap-target border rounded-lg px-3 py-2 text-sm font-semibold">
+          Skill Breakdown →
+        </Link>
+      </div>
+
       <div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3 items-center">
         <label className="flex items-center gap-2 text-sm">
           <span className="font-semibold text-slate-500">Position</span>

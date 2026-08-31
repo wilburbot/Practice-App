@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../db.js";
 import { findPlayerByShareToken, findSessionByShareToken, findTeamByShareToken } from "../lib/publicAccess.js";
-import { buildPlayerProgress, buildSessionReport, buildTeamWeekly } from "../lib/reportQueries.js";
+import { buildPlayerProgress, buildSessionReport, buildSkillBreakdown, buildTeamWeekly } from "../lib/reportQueries.js";
 
 // Unauthenticated, read-only routes for the share link a coach hands out to players/parents/assistant
 // coaches. Nothing here can be used to modify data — every handler resolves access purely from the
@@ -70,4 +70,15 @@ publicRouter.get("/:shareToken/weekly", async (req, res) => {
 
   const { weeks } = await buildTeamWeekly(team.id, { playerId, position });
   res.json({ team: { id: team.id, name: team.name, season: team.season }, weeks });
+});
+
+publicRouter.get("/:shareToken/skills", async (req, res) => {
+  const team = await findTeamByShareToken(req.params.shareToken);
+  if (!team) return res.status(404).json({ error: "Invalid or expired share link" });
+
+  const playerId = req.query.playerId as string | undefined;
+  const position = req.query.position as string | undefined;
+
+  const breakdown = await buildSkillBreakdown(team.id, { playerId, position });
+  res.json({ team: { id: team.id, name: team.name, season: team.season }, ...breakdown });
 });
