@@ -15,6 +15,7 @@ import type { PlayerProgress } from "../../lib/types";
 import { MetricsTable } from "../../components/MetricsTable";
 import { WeeklyComparisonCard } from "../../components/WeeklyComparisonCard";
 import { CourtTendencyChart } from "../../components/CourtTendencyChart";
+import { HighlightReelCard } from "../../components/HighlightReelCard";
 
 export function PublicPlayerPage() {
   const { shareToken, playerId } = useParams<{ shareToken: string; playerId: string }>();
@@ -27,7 +28,7 @@ export function PublicPlayerPage() {
 
   if (isLoading || !data) return <p className="p-6">Loading…</p>;
 
-  const { player, overall, weeks, tendencies } = data;
+  const { player, overall, weeks, tendencies, clips } = data;
 
   const chartData = weeks.map((w) => ({
     week: w.week.replace(/^\d{4}-/, ""),
@@ -59,6 +60,8 @@ export function PublicPlayerPage() {
         <h2 className="font-semibold text-court-dark mb-3">Career Totals</h2>
         <MetricsTable rows={[{ label: "All-time", metrics: overall }]} />
       </div>
+
+      <HighlightReelCard clips={clips} />
 
       <WeeklyComparisonCard weeks={weeks} overall={overall} />
 

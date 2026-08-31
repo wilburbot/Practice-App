@@ -18,6 +18,8 @@ launches full-screen with an app icon, and keeps working offline at the gym.
 - **Weekly team reports** — auto-generated week-by-week team totals and top performers.
 - **Player progress charts** — each player has a page showing their stats trending week over week, so they can
   see their own progression over the season.
+- **Highlight reel** — on that same page, an auto-advancing playlist plays through every one of a player's tagged
+  video moments back to back (toggle between "Highlights Only" and every logged play).
 - **Cloud-synced** — data lives in a real Postgres database behind an API, so it's available from any device you
   log into, not just the one iPad.
 - **AI recap, Q&A, and coaching insights** (optional, needs an Anthropic API key) — a short written recap of any

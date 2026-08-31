@@ -136,11 +136,23 @@ export interface SessionReport {
   players: { player: Player; metrics: PlayerMetrics }[];
 }
 
+export interface HighlightClip {
+  sessionId: string;
+  videoUrl: string;
+  timestampSec: number;
+  actionType: ActionType;
+  result: ActionResult;
+  sessionDate: string;
+  sessionType: SessionType;
+  opponent: string | null;
+}
+
 export interface PlayerProgress {
   player: Player;
   overall: PlayerMetrics;
   weeks: { week: string; metrics: PlayerMetrics }[];
   tendencies: CourtTendencies;
+  clips: HighlightClip[];
 }
 
 export interface TeamWeekly {

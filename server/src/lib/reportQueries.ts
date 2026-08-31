@@ -65,11 +65,27 @@ export async function buildPlayerProgress(player: Player) {
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .map(([week, weekEvents]) => ({ week, metrics: computeMetrics(weekEvents) }));
 
+  // Every tagged moment that has video, in chronological order — powers the auto-advancing
+  // highlight reel. createdAt order (the query's sort) is chronological across sessions already.
+  const clips = events
+    .filter((e) => e.session.videoUrl && e.videoTimestampSec != null)
+    .map((e) => ({
+      sessionId: e.sessionId,
+      videoUrl: e.session.videoUrl!,
+      timestampSec: e.videoTimestampSec!,
+      actionType: e.actionType,
+      result: e.result,
+      sessionDate: e.session.date,
+      sessionType: e.session.type,
+      opponent: e.session.opponent,
+    }));
+
   return {
     player,
     overall: computeMetrics(events),
     weeks,
     tendencies: computeCourtTendencies(events),
+    clips,
   };
 }
 
