@@ -13,6 +13,7 @@ import {
 import { api } from "../lib/api";
 import type { PlayerProgress } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
+import { WeeklyComparisonCard } from "../components/WeeklyComparisonCard";
 
 export function PlayerProgressPage() {
   const { playerId } = useParams<{ playerId: string }>();
@@ -52,6 +53,8 @@ export function PlayerProgressPage() {
         <h2 className="font-semibold text-court-dark mb-3">Career Totals</h2>
         <MetricsTable rows={[{ label: "All-time", metrics: overall }]} />
       </div>
+
+      <WeeklyComparisonCard weeks={weeks} overall={overall} />
 
       {weeks.length > 0 ? (
         <>
