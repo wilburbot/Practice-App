@@ -28,3 +28,10 @@ export async function findOwnedSession(sessionId: string, userId: string) {
     where: { id: sessionId, team: accessibleTeamWhere(userId) },
   });
 }
+
+/** Returns the stat event if it exists and belongs to a team the user can access, otherwise null. */
+export async function findOwnedStatEvent(eventId: string, userId: string) {
+  return prisma.statEvent.findFirst({
+    where: { id: eventId, session: { team: accessibleTeamWhere(userId) } },
+  });
+}

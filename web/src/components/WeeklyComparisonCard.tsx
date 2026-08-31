@@ -1,3 +1,4 @@
+import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { PlayerMetrics } from "../lib/types";
 
 interface Row {
@@ -50,6 +51,15 @@ export function WeeklyComparisonCard({
   const thisWeek = weeks[weeks.length - 1]!;
   const lastWeek = weeks.length > 1 ? weeks[weeks.length - 2]! : null;
 
+  // Volume stats only — Attack Eff (%) and Passer Rating (0-3) are on different scales and would be
+  // unreadable squashed next to counts like Points, so they stay table-only below.
+  const chartData = ROWS.filter((row) => !row.isPct && row.label !== "Passer Rating").map((row) => ({
+    stat: row.label,
+    "This Week": row.value(thisWeek.metrics) ?? 0,
+    ...(lastWeek ? { "Last Week": row.value(lastWeek.metrics) ?? 0 } : {}),
+    "Season Avg": Math.round((row.seasonValue(overall, weeks.length) ?? 0) * 10) / 10,
+  }));
+
   return (
     <div className="bg-white border rounded-xl p-4">
       <h2 className="font-semibold text-court-dark mb-1">Progress Comparison</h2>
@@ -57,7 +67,21 @@ export function WeeklyComparisonCard({
         Week {thisWeek.week}
         {lastWeek ? ` vs week ${lastWeek.week}, and vs this season's average` : " — track a second week to see week-over-week change"}
       </p>
-      <div className="overflow-x-auto">
+
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="stat" />
+          <YAxis allowDecimals={false} />
+          <Tooltip />
+          <Legend />
+          <Bar dataKey="This Week" fill="#1e3a8a" />
+          {lastWeek && <Bar dataKey="Last Week" fill="#94a3b8" />}
+          <Bar dataKey="Season Avg" fill="#059669" />
+        </BarChart>
+      </ResponsiveContainer>
+
+      <div className="overflow-x-auto mt-4">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="text-left text-slate-500 border-b">

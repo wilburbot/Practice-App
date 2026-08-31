@@ -1,6 +1,6 @@
 import type { Player, Session } from "@prisma/client";
 import { prisma } from "../db.js";
-import { computeMetrics, computeServingSplits, isoWeekKey } from "./metrics.js";
+import { computeCourtTendencies, computeMetrics, computeServingSplits, isoWeekKey } from "./metrics.js";
 
 /** Full box score for one session: per-player metrics + team totals. Caller must have already verified access to `session`. */
 export async function buildSessionReport(session: Session) {
@@ -63,7 +63,12 @@ export async function buildPlayerProgress(player: Player) {
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .map(([week, weekEvents]) => ({ week, metrics: computeMetrics(weekEvents) }));
 
-  return { player, overall: computeMetrics(events), weeks };
+  return {
+    player,
+    overall: computeMetrics(events),
+    weeks,
+    tendencies: computeCourtTendencies(events),
+  };
 }
 
 /** Team-wide weekly rollup: totals per week plus that week's top performers, optionally scoped to one player/position. */

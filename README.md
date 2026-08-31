@@ -91,8 +91,22 @@ ephemeral, so if you're deploying long-term, mount a persistent volume there —
 - Reception events also carry a `passRating` (0-3, BallTime-style passer grading: 0 = ace against, 3 = perfect
   pass) and, on matches, a `servingTeam` (Own/Opponent) the coach toggles live so point-scoring % and side-out %
   can be computed, plus a `setNumber` for per-set box scores
+- Attack/serve events can optionally carry a `targetX`/`targetY` (normalized 0-1 position on the opponent's
+  court) tagged from the Recent Events list on Live Tracking, powering the Court Tendencies spray chart on each
+  player's progress page
+- `Session.videoStartedAt` is the server-authoritative clock start for whichever device currently holds the
+  camera — every coach's device computes a stat tap's video timestamp from this shared value (not local device
+  time), so multiple coaches tracking the same session from different iPads stay in sync with one recording
 - All metrics (kills, efficiency %, passer rating, points, etc.) are computed on the fly from these raw events —
   see `server/src/lib/metrics.ts`
+
+## Multiple coaches, one video
+
+Only one device should actually hold the camera and record at a time — Live Tracking hides the camera controls
+on any device where another coach already has a recording in progress, showing a status message instead. But
+any number of coaches can be logging stats simultaneously regardless of who's recording: everyone's taps get
+timestamped against that one shared recording (via `videoStartedAt`), and Live Tracking polls every few seconds
+so taps from other coaches' devices show up on your screen shortly after they're logged.
 
 ## Sharing with players and parents (view-only)
 

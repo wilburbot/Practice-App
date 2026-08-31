@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import type { Player, ServingTeam, Session, StatEvent } from "../lib/types";
 import { ACTION_GROUPS, type ActionButton } from "../lib/actions";
 import { useCamera } from "../hooks/useCamera";
+import { CourtTargetPicker } from "../components/CourtTargetPicker";
 
 export function LiveTrackingPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -16,11 +17,15 @@ export function LiveTrackingPage() {
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
   const [currentSet, setCurrentSet] = useState(1);
   const [servingTeam, setServingTeam] = useState<ServingTeam>("OWN");
+  const [pickerEventId, setPickerEventId] = useState<string | null>(null);
 
   const { data: session } = useQuery({
     queryKey: ["session", sessionId],
     queryFn: () => api.get<Session>(`/sessions/${sessionId}`),
     enabled: !!sessionId,
+    // Polls so every coach's device picks up videoStartedAt as soon as whoever is holding the
+    // camera starts/stops recording, keeping everyone's stat taps synced to the same video clock.
+    refetchInterval: 3000,
   });
 
   const { data: players } = useQuery({
@@ -38,6 +43,13 @@ export function LiveTrackingPage() {
     refetchInterval: 3000,
   });
 
+  // Shared clock: every coach's device computes the video timestamp from the session's
+  // server-recorded start time, not local camera state — so taps stay in sync with the one
+  // video even when logged from a device that isn't the one actually recording.
+  const videoTimestampSec = session?.videoStartedAt
+    ? (Date.now() - new Date(session.videoStartedAt).getTime()) / 1000
+    : null;
+
   const logEvent = useMutation({
     mutationFn: (input: ActionButton) =>
       api.post<StatEvent>("/stats", {
@@ -48,7 +60,7 @@ export function LiveTrackingPage() {
         passRating: input.passRating ?? null,
         servingTeam: session?.type === "MATCH" ? servingTeam : null,
         setNumber: session?.type === "MATCH" ? currentSet : null,
-        videoTimestampSec: camera.elapsedSeconds(),
+        videoTimestampSec,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stats", sessionId] }),
   });
@@ -56,6 +68,15 @@ export function LiveTrackingPage() {
   const deleteEvent = useMutation({
     mutationFn: (eventId: string) => api.delete(`/stats/${eventId}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stats", sessionId] }),
+  });
+
+  const setTarget = useMutation({
+    mutationFn: ({ eventId, x, y }: { eventId: string; x: number; y: number }) =>
+      api.patch(`/stats/${eventId}/target`, { targetX: x, targetY: y }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stats", sessionId] });
+      setPickerEventId(null);
+    },
   });
 
   const uploadVideo = useMutation({
@@ -74,6 +95,16 @@ export function LiveTrackingPage() {
     onError: () => setUploadStatus("error"),
   });
 
+  const markRecordingStarted = useMutation({
+    mutationFn: () => api.post<Session>(`/sessions/${sessionId}/recording/start`),
+    onSuccess: (updated) => queryClient.setQueryData(["session", sessionId], updated),
+  });
+
+  const markRecordingStopped = useMutation({
+    mutationFn: () => api.post<Session>(`/sessions/${sessionId}/recording/stop`),
+    onSuccess: (updated) => queryClient.setQueryData(["session", sessionId], updated),
+  });
+
   const activePlayers = players?.filter((p) => p.active) ?? [];
   const recentEvents = [...(events ?? [])].reverse().slice(0, 8);
 
@@ -88,13 +119,21 @@ export function LiveTrackingPage() {
     if (videoRef.current) await camera.startPreview(videoRef.current);
   };
 
-  const onStartRecording = () => camera.startRecording();
+  const onStartRecording = () => {
+    camera.startRecording();
+    markRecordingStarted.mutate();
+  };
 
   const onStopRecording = async () => {
     const result = await camera.stopRecording();
     camera.stopPreview();
+    markRecordingStopped.mutate();
     if (result) uploadVideo.mutate(result);
   };
+
+  // True when a DIFFERENT device has the camera going — hide this device's camera controls so
+  // two coaches can't both hit "Start Recording" and clobber each other's video reference point.
+  const recordingElsewhere = !!session?.videoStartedAt && !camera.isRecording;
 
   const findPlayerLabel = (playerId: string) => {
     const p = activePlayers.find((pl) => pl.id === playerId) ?? players?.find((pl) => pl.id === playerId);
@@ -119,39 +158,50 @@ export function LiveTrackingPage() {
 
       {/* Camera */}
       <div className="bg-white border rounded-xl p-3 flex flex-col gap-2">
-        <video ref={videoRef} muted playsInline className="w-full max-h-64 bg-black rounded-lg object-contain" />
-        {camera.error && <p className="text-sm text-red-600">{camera.error}</p>}
-        <div className="flex gap-2 flex-wrap items-center">
-          {!camera.isPreviewing && (
-            <button onClick={onStartCamera} className="tap-target border rounded-lg px-3 py-2 text-sm font-semibold">
-              Enable Camera
-            </button>
-          )}
-          {camera.isPreviewing && !camera.isRecording && (
-            <button
-              onClick={onStartRecording}
-              className="tap-target bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-semibold"
-            >
-              ● Start Recording
-            </button>
-          )}
-          {camera.isRecording && (
-            <button
-              onClick={onStopRecording}
-              className="tap-target bg-slate-800 text-white rounded-lg px-3 py-2 text-sm font-semibold"
-            >
-              ■ Stop & Save Video
-            </button>
-          )}
-          {camera.isRecording && <span className="text-sm text-red-600 font-medium animate-pulse">Recording…</span>}
-          {uploadStatus === "uploading" && <span className="text-sm text-slate-500">Uploading video…</span>}
-          {uploadStatus === "done" && <span className="text-sm text-emerald-600">Video saved ✓</span>}
-          {uploadStatus === "error" && <span className="text-sm text-red-600">Video upload failed</span>}
-        </div>
-        <p className="text-xs text-slate-400">
-          Recording is optional — stats can be logged with or without video. Each tap is timestamped against the
-          recording so you can jump straight to the play later.
-        </p>
+        {recordingElsewhere ? (
+          <p className="text-sm text-slate-600">
+            🔴 Another coach is recording this session
+            {session.videoStartedAt && ` (started ${new Date(session.videoStartedAt).toLocaleTimeString()})`} — your
+            stat taps are syncing to that video automatically. Only one device should hold the camera at a time.
+          </p>
+        ) : (
+          <>
+            <video ref={videoRef} muted playsInline className="w-full max-h-64 bg-black rounded-lg object-contain" />
+            {camera.error && <p className="text-sm text-red-600">{camera.error}</p>}
+            <div className="flex gap-2 flex-wrap items-center">
+              {!camera.isPreviewing && (
+                <button onClick={onStartCamera} className="tap-target border rounded-lg px-3 py-2 text-sm font-semibold">
+                  Enable Camera
+                </button>
+              )}
+              {camera.isPreviewing && !camera.isRecording && (
+                <button
+                  onClick={onStartRecording}
+                  className="tap-target bg-red-600 text-white rounded-lg px-3 py-2 text-sm font-semibold"
+                >
+                  ● Start Recording
+                </button>
+              )}
+              {camera.isRecording && (
+                <button
+                  onClick={onStopRecording}
+                  className="tap-target bg-slate-800 text-white rounded-lg px-3 py-2 text-sm font-semibold"
+                >
+                  ■ Stop & Save Video
+                </button>
+              )}
+              {camera.isRecording && <span className="text-sm text-red-600 font-medium animate-pulse">Recording…</span>}
+              {uploadStatus === "uploading" && <span className="text-sm text-slate-500">Uploading video…</span>}
+              {uploadStatus === "done" && <span className="text-sm text-emerald-600">Video saved ✓</span>}
+              {uploadStatus === "error" && <span className="text-sm text-red-600">Video upload failed</span>}
+            </div>
+            <p className="text-xs text-slate-400">
+              Recording is optional — stats can be logged with or without video. Each tap is timestamped against
+              the recording so you can jump straight to the play later. If other coaches are tracking this same
+              session on their own devices, their taps sync to this video too.
+            </p>
+          </>
+        )}
       </div>
 
       {/* Set + serving toggle (matches only) */}
@@ -244,21 +294,40 @@ export function LiveTrackingPage() {
 
       {/* Recent events feed */}
       <div className="bg-white border rounded-xl p-3">
-        <h3 className="font-semibold text-sm text-slate-500 mb-2">Recent — tap to undo a mis-tap</h3>
+        <h3 className="font-semibold text-sm text-slate-500 mb-2">
+          Recent — tap an attack/serve to tag where it landed, or ✕ to undo
+        </h3>
         <div className="flex flex-col gap-1">
-          {recentEvents.map((event) => (
-            <button
-              key={event.id}
-              onClick={() => deleteEvent.mutate(event.id)}
-              className="tap-target flex justify-between items-center text-sm border rounded-lg px-3 py-2 hover:bg-red-50"
-            >
-              <span>
-                {findPlayerLabel(event.playerId)} — {event.actionType} / {event.result}
-                {event.passRating != null && ` (pass ${event.passRating})`}
-              </span>
-              <span className="text-slate-400 text-xs">✕ remove</span>
-            </button>
-          ))}
+          {recentEvents.map((event) => {
+            const canTagLocation = event.actionType === "ATTACK" || event.actionType === "SERVE";
+            return (
+              <div key={event.id}>
+                <div className="flex items-center justify-between text-sm border rounded-lg px-1 py-1">
+                  <button
+                    onClick={() => canTagLocation && setPickerEventId(pickerEventId === event.id ? null : event.id)}
+                    disabled={!canTagLocation}
+                    className="tap-target flex-1 text-left px-2 py-1 rounded-lg disabled:cursor-default hover:enabled:bg-slate-50"
+                  >
+                    {findPlayerLabel(event.playerId)} — {event.actionType} / {event.result}
+                    {event.passRating != null && ` (pass ${event.passRating})`}
+                    {event.targetX != null && " 📍"}
+                  </button>
+                  <button
+                    onClick={() => deleteEvent.mutate(event.id)}
+                    className="tap-target text-slate-400 text-xs px-2 py-1 hover:text-red-600"
+                  >
+                    ✕ undo
+                  </button>
+                </div>
+                {pickerEventId === event.id && (
+                  <CourtTargetPicker
+                    onPick={(x, y) => setTarget.mutate({ eventId: event.id, x, y })}
+                    onCancel={() => setPickerEventId(null)}
+                  />
+                )}
+              </div>
+            );
+          })}
           {recentEvents.length === 0 && <p className="text-slate-400 text-sm">No stats logged yet.</p>}
         </div>
       </div>

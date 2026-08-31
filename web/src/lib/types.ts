@@ -63,6 +63,7 @@ export interface Session {
   notes: string | null;
   videoUrl: string | null;
   videoDurationSec: number | null;
+  videoStartedAt: string | null;
   createdAt: string;
   _count?: { statEvents: number };
 }
@@ -77,8 +78,21 @@ export interface StatEvent {
   servingTeam: ServingTeam | null;
   setNumber: number | null;
   videoTimestampSec: number | null;
+  targetX: number | null;
+  targetY: number | null;
   createdAt: string;
   player?: Player;
+}
+
+export interface CourtPoint {
+  x: number;
+  y: number;
+  result: ActionResult;
+}
+
+export interface CourtTendencies {
+  attack: CourtPoint[];
+  serve: CourtPoint[];
 }
 
 export interface ActionMetrics {
@@ -124,6 +138,7 @@ export interface PlayerProgress {
   player: Player;
   overall: PlayerMetrics;
   weeks: { week: string; metrics: PlayerMetrics }[];
+  tendencies: CourtTendencies;
 }
 
 export interface TeamWeekly {

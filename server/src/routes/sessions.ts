@@ -102,6 +102,31 @@ sessionsRouter.delete("/:sessionId", async (req: AuthedRequest, res) => {
   res.status(204).end();
 });
 
+// Marks "recording started now" on the session, server time. Every coach's device reads this back
+// to compute stat-tap video timestamps, so taps stay in sync with the one video being recorded even
+// when logged from a different device than the one actually recording.
+sessionsRouter.post("/:sessionId/recording/start", async (req: AuthedRequest, res) => {
+  const session = await findOwnedSession(req.params.sessionId, req.userId!);
+  if (!session) return res.status(404).json({ error: "Session not found" });
+
+  const updated = await prisma.session.update({
+    where: { id: session.id },
+    data: { videoStartedAt: new Date() },
+  });
+  res.json(updated);
+});
+
+sessionsRouter.post("/:sessionId/recording/stop", async (req: AuthedRequest, res) => {
+  const session = await findOwnedSession(req.params.sessionId, req.userId!);
+  if (!session) return res.status(404).json({ error: "Session not found" });
+
+  const updated = await prisma.session.update({
+    where: { id: session.id },
+    data: { videoStartedAt: null },
+  });
+  res.json(updated);
+});
+
 sessionsRouter.post(
   "/:sessionId/video",
   upload.single("video"),

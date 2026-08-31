@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
-import { findOwnedPlayer, findOwnedSession } from "../lib/ownership.js";
+import { findOwnedPlayer, findOwnedSession, findOwnedStatEvent } from "../lib/ownership.js";
 
 export const statsRouter = Router();
 statsRouter.use(requireAuth);
@@ -20,6 +20,9 @@ const statEventSchema = z.object({
   servingTeam: z.enum(SERVING_TEAMS).optional().nullable(),
   setNumber: z.number().int().min(1).max(10).optional().nullable(),
   videoTimestampSec: z.number().min(0).optional().nullable(),
+  // Normalized 0-1 position on the opponent's court where an attack/serve landed, for tendency charts.
+  targetX: z.number().min(0).max(1).optional().nullable(),
+  targetY: z.number().min(0).max(1).optional().nullable(),
 });
 
 statsRouter.get("/", async (req: AuthedRequest, res) => {
@@ -56,10 +59,28 @@ statsRouter.post("/", async (req: AuthedRequest, res) => {
   res.status(201).json(event);
 });
 
+const targetSchema = z.object({
+  targetX: z.number().min(0).max(1).nullable(),
+  targetY: z.number().min(0).max(1).nullable(),
+});
+
+// Retroactively tags (or clears) where an already-logged attack/serve landed — used from the
+// Recent Events list so setting court location never blocks the live tap-to-track flow.
+statsRouter.patch("/:eventId/target", async (req: AuthedRequest, res) => {
+  const event = await findOwnedStatEvent(req.params.eventId, req.userId!);
+  if (!event) return res.status(404).json({ error: "Stat event not found" });
+
+  const parsed = targetSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+  }
+
+  const updated = await prisma.statEvent.update({ where: { id: event.id }, data: parsed.data });
+  res.json(updated);
+});
+
 statsRouter.delete("/:eventId", async (req: AuthedRequest, res) => {
-  const event = await prisma.statEvent.findFirst({
-    where: { id: req.params.eventId, session: { team: { ownerId: req.userId } } },
-  });
+  const event = await findOwnedStatEvent(req.params.eventId, req.userId!);
   if (!event) return res.status(404).json({ error: "Stat event not found" });
   await prisma.statEvent.delete({ where: { id: event.id } });
   res.status(204).end();

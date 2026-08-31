@@ -5,6 +5,8 @@ export interface StatEventLike {
   result: ActionResult;
   passRating?: number | null;
   servingTeam?: ServingTeam | null;
+  targetX?: number | null;
+  targetY?: number | null;
 }
 
 export interface ActionMetrics {
@@ -126,6 +128,27 @@ export function computeServingSplits(events: StatEventLike[]): ServingSplits {
       pct: receiveAttempts > 0 ? receivePoints / receiveAttempts : null,
     },
   };
+}
+
+export interface CourtPoint {
+  x: number;
+  y: number;
+  result: ActionResult;
+}
+
+export interface CourtTendencies {
+  attack: CourtPoint[];
+  serve: CourtPoint[];
+}
+
+/** Pulls out every ATTACK/SERVE event with a tagged court location, for a spray-chart tendency view. */
+export function computeCourtTendencies(events: StatEventLike[]): CourtTendencies {
+  const toPoints = (actionType: ActionType) =>
+    events
+      .filter((e) => e.actionType === actionType && e.targetX != null && e.targetY != null)
+      .map((e) => ({ x: e.targetX!, y: e.targetY!, result: e.result }));
+
+  return { attack: toPoints("ATTACK"), serve: toPoints("SERVE") };
 }
 
 /** ISO week key like "2026-W35", used to bucket events for progress charts. */

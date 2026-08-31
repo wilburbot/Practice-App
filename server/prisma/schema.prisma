@@ -77,6 +77,10 @@ model Session {
   notes            String?
   videoUrl         String?
   videoDurationSec Float?
+  /// Server-authoritative clock start for the active recording, null when no one is recording.
+  /// Every coach's device computes a stat tap's videoTimestampSec from this shared reference, so
+  /// taps logged from different devices stay in sync with the one video being recorded.
+  videoStartedAt   DateTime?
   createdAt        DateTime    @default(now())
   statEvents       StatEvent[]
 
@@ -117,6 +121,9 @@ model StatEvent {
   servingTeam        ServingTeam?
   setNumber          Int?
   videoTimestampSec  Float?
+  /// Normalized 0-1 target location on the opponent's court, only set for ATTACK/SERVE, for tendency charts
+  targetX            Float?
+  targetY            Float?
   createdAt          DateTime     @default(now())
 
   @@index([sessionId])

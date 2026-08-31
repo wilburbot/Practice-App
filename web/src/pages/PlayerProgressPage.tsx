@@ -14,6 +14,7 @@ import { api } from "../lib/api";
 import type { PlayerProgress } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
 import { WeeklyComparisonCard } from "../components/WeeklyComparisonCard";
+import { CourtTendencyChart } from "../components/CourtTendencyChart";
 
 export function PlayerProgressPage() {
   const { playerId } = useParams<{ playerId: string }>();
@@ -26,7 +27,7 @@ export function PlayerProgressPage() {
 
   if (isLoading || !data) return <p className="p-6">Loading…</p>;
 
-  const { player, overall, weeks } = data;
+  const { player, overall, weeks, tendencies } = data;
 
   const chartData = weeks.map((w) => ({
     week: w.week.replace(/^\d{4}-/, ""),
@@ -55,6 +56,8 @@ export function PlayerProgressPage() {
       </div>
 
       <WeeklyComparisonCard weeks={weeks} overall={overall} />
+
+      <CourtTendencyChart tendencies={tendencies} />
 
       {weeks.length > 0 ? (
         <>
