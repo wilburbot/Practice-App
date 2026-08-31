@@ -12,6 +12,10 @@ const SKILL_LABELS: Record<ActionType, { title: string; success: string; error: 
 
 const RESULT_COLORS = { SUCCESS: "#ea580c", ERROR: "#dc2626", ATTEMPT: "#cbd5e1" };
 
+function fmtPct(value: number | null): string {
+  return value === null ? "—" : `${Math.round(value * 100)}%`;
+}
+
 function SkillCard({ skill }: { skill: SkillBreakdownEntry }) {
   const labels = SKILL_LABELS[skill.actionType];
 
@@ -73,6 +77,45 @@ function SkillCard({ skill }: { skill: SkillBreakdownEntry }) {
                 <Bar dataKey={labels.success} fill="#ea580c" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+
+          <div className="sm:col-span-2 overflow-x-auto">
+            <p className="text-xs font-semibold text-slate-500 mb-1">By Player</p>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="text-left text-slate-500 border-b">
+                  <th className="py-1.5 pr-2">#</th>
+                  <th className="py-1.5 pr-3">Name</th>
+                  <th className="py-1.5 px-2 text-right">Att</th>
+                  <th className="py-1.5 px-2 text-right">{labels.success}</th>
+                  <th className="py-1.5 px-2 text-right">{labels.error}</th>
+                  <th className="py-1.5 px-2 text-right">Eff%</th>
+                  {skill.actionType === "RECEPTION" && <th className="py-1.5 pl-2 text-right">Avg Rtg</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {skill.byPlayer.map((p) => {
+                  const efficiency = p.attempts > 0 ? (p.success - p.error) / p.attempts : null;
+                  return (
+                    <tr key={p.player.id} className="border-b last:border-0">
+                      <td className="py-1.5 pr-2 text-slate-500">{p.player.jerseyNumber ?? "—"}</td>
+                      <td className="py-1.5 pr-3 font-medium">
+                        {p.player.firstName} {p.player.lastName}
+                      </td>
+                      <td className="py-1.5 px-2 text-right">{p.attempts}</td>
+                      <td className="py-1.5 px-2 text-right">{p.success}</td>
+                      <td className="py-1.5 px-2 text-right">{p.error}</td>
+                      <td className="py-1.5 px-2 text-right">{fmtPct(efficiency)}</td>
+                      {skill.actionType === "RECEPTION" && (
+                        <td className="py-1.5 pl-2 text-right">
+                          {p.avgPassRating === null ? "—" : p.avgPassRating.toFixed(1)}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

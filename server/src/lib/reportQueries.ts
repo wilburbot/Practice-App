@@ -151,16 +151,34 @@ export async function buildSkillBreakdown(
 
     const byPlayerMap = new Map<
       string,
-      { player: (typeof skillEvents)[number]["player"]; success: number; error: number; attempts: number }
+      {
+        player: (typeof skillEvents)[number]["player"];
+        success: number;
+        error: number;
+        attempts: number;
+        passRatingSum: number;
+        passRatingCount: number;
+      }
     >();
     for (const event of skillEvents) {
-      const bucket = byPlayerMap.get(event.playerId) ?? { player: event.player, success: 0, error: 0, attempts: 0 };
+      const bucket =
+        byPlayerMap.get(event.playerId) ??
+        { player: event.player, success: 0, error: 0, attempts: 0, passRatingSum: 0, passRatingCount: 0 };
       bucket.attempts += 1;
       if (event.result === "SUCCESS") bucket.success += 1;
       if (event.result === "ERROR") bucket.error += 1;
+      if (event.passRating != null) {
+        bucket.passRatingSum += event.passRating;
+        bucket.passRatingCount += 1;
+      }
       byPlayerMap.set(event.playerId, bucket);
     }
-    const byPlayer = [...byPlayerMap.values()].sort((a, b) => b.success - a.success);
+    const byPlayer = [...byPlayerMap.values()]
+      .map(({ passRatingSum, passRatingCount, ...rest }) => ({
+        ...rest,
+        avgPassRating: passRatingCount > 0 ? passRatingSum / passRatingCount : null,
+      }))
+      .sort((a, b) => b.success - a.success);
 
     return { actionType, attempts: skillEvents.length, resultBreakdown, byPlayer };
   });

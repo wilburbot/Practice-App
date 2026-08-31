@@ -164,6 +164,7 @@ export interface SkillPlayerStat {
   success: number;
   error: number;
   attempts: number;
+  avgPassRating: number | null;
 }
 
 export interface SkillBreakdownEntry {
