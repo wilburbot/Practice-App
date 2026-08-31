@@ -64,6 +64,8 @@ export interface Session {
   videoUrl: string | null;
   videoDurationSec: number | null;
   videoStartedAt: string | null;
+  recapText: string | null;
+  recapGeneratedAt: string | null;
   createdAt: string;
   _count?: { statEvents: number };
 }

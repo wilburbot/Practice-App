@@ -10,6 +10,7 @@ import { MetricsTable } from "../components/MetricsTable";
 import { ShareLinkCard } from "../components/ShareLinkCard";
 import { InviteCoachCard } from "../components/InviteCoachCard";
 import { TeamMembersCard } from "../components/TeamMembersCard";
+import { AskTeamCard } from "../components/AskTeamCard";
 
 export function TeamDashboardPage() {
   const { teamId } = useCurrentTeam();
@@ -60,6 +61,8 @@ export function TeamDashboardPage() {
       <TeamMembersCard teamId={teamId} isOwner={team.ownerId === user?.id} />
 
       {team.ownerId === user?.id && <InviteCoachCard teamId={teamId} />}
+
+      <AskTeamCard teamId={teamId} />
 
       <div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3 items-center">
         <label className="flex items-center gap-2 text-sm">

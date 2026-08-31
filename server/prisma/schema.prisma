@@ -81,6 +81,9 @@ model Session {
   /// Every coach's device computes a stat tap's videoTimestampSec from this shared reference, so
   /// taps logged from different devices stay in sync with the one video being recorded.
   videoStartedAt   DateTime?
+  /// Cached AI-generated recap so it isn't regenerated (and re-billed) on every page view — coach can regenerate
+  recapText        String?
+  recapGeneratedAt DateTime?
   createdAt        DateTime    @default(now())
   statEvents       StatEvent[]
 

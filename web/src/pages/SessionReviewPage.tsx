@@ -4,6 +4,7 @@ import { Link, useParams } from "react-router-dom";
 import { api, assetUrl } from "../lib/api";
 import type { SessionReport, StatEvent } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
+import { SessionRecapCard } from "../components/SessionRecapCard";
 
 function playerLabel(event: StatEvent): string {
   if (!event.player) return "";
@@ -100,6 +101,8 @@ export function SessionReviewPage() {
           </div>
         </div>
       )}
+
+      <SessionRecapCard session={session} />
 
       <div className="bg-white border rounded-xl p-4">
         <h2 className="font-semibold text-court-dark mb-3">Team Totals</h2>

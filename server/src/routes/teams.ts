@@ -4,6 +4,8 @@ import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
 import { findOwnedTeam, findOwnedTeamStrict } from "../lib/ownership.js";
+import { askClaude, handleLLMError } from "../lib/llm.js";
+import { summarizeTeamForLLM } from "../lib/llmContext.js";
 
 export const teamsRouter = Router();
 teamsRouter.use(requireAuth);
@@ -180,4 +182,32 @@ teamsRouter.delete("/:teamId/members/:memberId", async (req: AuthedRequest, res)
 
   await prisma.teamMember.delete({ where: { id: member.id } });
   res.status(204).end();
+});
+
+const askSchema = z.object({ question: z.string().min(1).max(500) });
+
+// Freeform Q&A over this team's season stats — not cached, each call is a fresh (billed) request.
+teamsRouter.post("/:teamId/ask", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeam(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found" });
+
+  const parsed = askSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+  }
+
+  try {
+    const summary = await summarizeTeamForLLM(team.id);
+    const answer = await askClaude(
+      "You are an assistant analyzing volleyball stats for a coach. Answer the coach's question using ONLY the " +
+        "season data given below. If the data doesn't contain the answer, say so plainly rather than guessing. " +
+        "Be concise — a few sentences, not an essay.\n\n" +
+        summary,
+      parsed.data.question,
+      500,
+    );
+    res.json({ answer });
+  } catch (err) {
+    handleLLMError(err, res);
+  }
 });

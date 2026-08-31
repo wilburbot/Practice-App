@@ -2,6 +2,8 @@ import { Router } from "express";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
 import { findOwnedPlayer, findOwnedSession, findOwnedTeam } from "../lib/ownership.js";
 import { buildPlayerProgress, buildSessionReport, buildSkillBreakdown, buildTeamWeekly } from "../lib/reportQueries.js";
+import { askClaude, handleLLMError } from "../lib/llm.js";
+import { summarizeTeamForLLM } from "../lib/llmContext.js";
 
 export const reportsRouter = Router();
 reportsRouter.use(requireAuth);
@@ -44,4 +46,26 @@ reportsRouter.get("/team/:teamId/skills", async (req: AuthedRequest, res) => {
 
   const breakdown = await buildSkillBreakdown(team.id, { playerId, position });
   res.json({ team, ...breakdown });
+});
+
+// AI-generated coaching priorities based on the season's skill trends. Not cached — each call is a
+// fresh (billed) request, since it's meant to be regenerated as new stats come in.
+reportsRouter.post("/team/:teamId/coaching-insights", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeam(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found" });
+
+  try {
+    const summary = await summarizeTeamForLLM(team.id);
+    const insights = await askClaude(
+      "You are an assistant volleyball coach. Based on this team's season stats, suggest 3-5 concrete, specific " +
+        "coaching priorities or drills — a skill that needs work, a rotation or player trend worth addressing, " +
+        "or something to reinforce because it's working. Format as a short list, one suggestion per line starting " +
+        "with a dash. No markdown headers, no preamble.",
+      summary,
+      600,
+    );
+    res.json({ insights });
+  } catch (err) {
+    handleLLMError(err, res);
+  }
 });

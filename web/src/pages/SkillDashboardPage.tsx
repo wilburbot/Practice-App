@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { useCurrentTeam } from "../lib/team";
 import type { Player, TeamSkillBreakdown } from "../lib/types";
 import { SkillDashboard } from "../components/SkillDashboard";
+import { CoachingInsightsCard } from "../components/CoachingInsightsCard";
 
 export function SkillDashboardPage() {
   const { teamId } = useCurrentTeam();
@@ -41,6 +42,8 @@ export function SkillDashboardPage() {
         <h1 className="text-xl font-bold text-slate-900">Skill Breakdown</h1>
         <p className="text-sm text-slate-500">Result distribution and top performers for each skill, all season</p>
       </div>
+
+      <CoachingInsightsCard teamId={teamId} />
 
       <div className="bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap gap-3 items-center">
         <label className="flex items-center gap-2 text-sm">

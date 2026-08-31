@@ -20,6 +20,9 @@ launches full-screen with an app icon, and keeps working offline at the gym.
   see their own progression over the season.
 - **Cloud-synced** — data lives in a real Postgres database behind an API, so it's available from any device you
   log into, not just the one iPad.
+- **AI recap, Q&A, and coaching insights** (optional, needs an Anthropic API key) — a short written recap of any
+  session, a chat box to ask questions about your season stats in plain English, and AI-suggested coaching
+  priorities based on skill trends.
 
 ## Tech stack
 
@@ -133,6 +136,24 @@ push, just short polling, so expect a few seconds of lag rather than instant syn
 The owner can see everyone with access under "Coaches" on the Team Dashboard, and remove an assistant coach's
 access at any time. Only the owner can delete the team entirely or manage the invite link; assistant coaches
 can do everything else.
+
+## AI features (recap, Q&A, coaching insights)
+
+Set `ANTHROPIC_API_KEY` on the server (get one at [console.anthropic.com](https://console.anthropic.com)) to
+enable three coach-only features, powered by Claude:
+
+- **Session recap** — a "Generate Recap" button on Session Review writes a short 3-5 sentence summary of that
+  session's box score. It's cached on the session (`recapText`) so it isn't regenerated — and re-billed — every
+  time you view the page; hit "Regenerate" if you want a fresh one.
+- **Ask About Your Stats** — a chat box on Team Dashboard where you can ask things like "How is our serve
+  receive trending?" in plain English. Each question sends a compact summary of the season's stats as context;
+  it can only answer from that data, not browse the web.
+- **Coaching Insights** — a button on the Skill Dashboard that suggests 3-5 concrete coaching priorities based on
+  the season's skill trends (which skill needs work, what's trending well, etc.).
+
+These call the Claude API (`claude-opus-5`) and cost real money per request — without a key set they return a
+clear "not configured" error instead of crashing. They're intentionally **not** available on the read-only
+player/parent share link, so a leaked share link can't run up your API bill.
 
 ## Notes & next steps
 
