@@ -20,3 +20,12 @@ body {
   touch-action: manipulation;
   user-select: none;
 }
+
+/* Text fields need real text selection/caret behavior — user-select: none on an <input>/<textarea>
+   can suppress the caret on iOS Safari and block typing entirely, so always override it back. */
+input.tap-target,
+textarea.tap-target,
+select.tap-target {
+  -webkit-user-select: text;
+  user-select: text;
+}
