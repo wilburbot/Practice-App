@@ -137,6 +137,37 @@ teamsRouter.get("/:teamId/members", async (req: AuthedRequest, res) => {
   res.json({ owner, members });
 });
 
+const addMemberSchema = z.object({ email: z.string().email() });
+
+// Owner-only: adds an existing user as an assistant coach directly by email (no invite link needed).
+teamsRouter.post("/:teamId/members", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeamStrict(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found, or you're not its owner" });
+
+  const parsed = addMemberSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+  }
+
+  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  if (!user) {
+    return res.status(404).json({
+      error: "No coach account found with that email. Ask them to sign up, or send them the invite link instead.",
+    });
+  }
+  if (user.id === team.ownerId) {
+    return res.status(400).json({ error: "That's you — you're already the head coach on this team." });
+  }
+
+  const member = await prisma.teamMember.upsert({
+    where: { teamId_userId: { teamId: team.id, userId: user.id } },
+    update: {},
+    create: { teamId: team.id, userId: user.id },
+    include: { user: { select: { id: true, name: true, email: true } } },
+  });
+  res.status(201).json(member);
+});
+
 // Owner-only: removes an assistant coach's edit access.
 teamsRouter.delete("/:teamId/members/:memberId", async (req: AuthedRequest, res) => {
   const team = await findOwnedTeamStrict(req.params.teamId, req.userId!);
