@@ -3,6 +3,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { NavBar } from "./components/NavBar";
 import { PublicLayout } from "./components/PublicLayout";
 import { AuthPage } from "./pages/AuthPage";
+import { JoinTeamPage } from "./pages/JoinTeamPage";
 import { HomePage } from "./pages/HomePage";
 import { RosterPage } from "./pages/RosterPage";
 import { SessionsPage } from "./pages/SessionsPage";
@@ -38,6 +39,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<AuthPage />} />
+      <Route path="/join/:inviteToken" element={<JoinTeamPage />} />
       <Route path="/share/:shareToken" element={<PublicLayout />}>
         <Route index element={<PublicTeamPage />} />
         <Route path="sessions/:sessionId" element={<PublicSessionPage />} />

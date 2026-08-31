@@ -15,8 +15,26 @@ export interface Team {
   season: string | null;
   ownerId: string;
   shareToken?: string | null;
+  inviteToken?: string | null;
   createdAt: string;
   _count?: { players: number; sessions: number };
+}
+
+export interface TeamMemberUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface TeamMember {
+  id: string;
+  createdAt: string;
+  user: TeamMemberUser;
+}
+
+export interface TeamMembers {
+  owner: TeamMemberUser | null;
+  members: TeamMember[];
 }
 
 export interface PublicTeam {

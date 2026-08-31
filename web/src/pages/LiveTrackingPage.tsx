@@ -33,7 +33,9 @@ export function LiveTrackingPage() {
     queryKey: ["stats", sessionId],
     queryFn: () => api.get<StatEvent[]>(`/stats?sessionId=${sessionId}`),
     enabled: !!sessionId,
-    refetchInterval: false,
+    // Polls while this screen is open so a second coach tracking the same session on another
+    // device shows up here within a few seconds, without needing a full realtime/websocket setup.
+    refetchInterval: 3000,
   });
 
   const logEvent = useMutation({

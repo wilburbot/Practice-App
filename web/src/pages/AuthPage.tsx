@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/api";
+import { takePendingInvite } from "../lib/pendingInvite";
 
 export function AuthPage() {
   const { isAuthenticated, login, signup } = useAuth();
@@ -22,7 +23,8 @@ export function AuthPage() {
     try {
       if (mode === "login") await login(email, password);
       else await signup(email, password, name);
-      navigate("/", { replace: true });
+      const pendingInvite = takePendingInvite();
+      navigate(pendingInvite ? `/join/${pendingInvite}` : "/", { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
     } finally {

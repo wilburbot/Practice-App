@@ -94,13 +94,31 @@ ephemeral, so if you're deploying long-term, mount a persistent volume there —
 - All metrics (kills, efficiency %, passer rating, points, etc.) are computed on the fly from these raw events —
   see `server/src/lib/metrics.ts`
 
-## Sharing with players, parents, and assistant coaches
+## Sharing with players and parents (view-only)
 
 From the **Team Dashboard**, click **Copy Link** under "Share With Players & Parents" to get a read-only link
 (`/share/<token>`) — no account or login needed. Anyone with the link can browse the dashboard, sessions, and
 video for that team, but can't edit anything (no editing routes exist behind the share token). Treat the link
 like a password: anyone who has it can view, so only send it to your team. If it ever leaks, **Generate New
 Link** invalidates the old one immediately.
+
+## Adding assistant coaches (full edit access)
+
+Only the coach who created a team (the "owner") can invite others. From the **Team Dashboard**, under "Invite an
+Assistant Coach", **Copy Link** and send it (`/join/<token>`) to the other coach. When they open it:
+
+- If they don't have an account yet, they're prompted to sign up first, then automatically resume joining.
+- Once logged in, they click **Accept & Join Team** and immediately get full edit access — they can log stats,
+  manage the roster, start sessions, and upload video, same as the owner.
+
+This is what makes it possible for two coaches to track the **same live session** from two different iPads at
+once: while on the Live Tracking screen, the app polls for new stat events every few seconds, so taps logged by
+one coach show up on the other's screen shortly after (no manual refresh needed — this isn't full realtime
+push, just short polling, so expect a few seconds of lag rather than instant sync).
+
+The owner can see everyone with access under "Coaches" on the Team Dashboard, and remove an assistant coach's
+access at any time. Only the owner can delete the team entirely or manage the invite link; assistant coaches
+can do everything else.
 
 ## Notes & next steps
 

@@ -8,25 +8,42 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  createdAt    DateTime @default(now())
-  teams        Team[]
+  id              String       @id @default(cuid())
+  email           String       @unique
+  passwordHash    String
+  name            String
+  createdAt       DateTime     @default(now())
+  teams           Team[]
+  teamMemberships TeamMember[]
 }
 
 model Team {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   name        String
   season      String?
-  owner       User      @relation(fields: [ownerId], references: [id])
+  owner       User         @relation(fields: [ownerId], references: [id])
   ownerId     String
-  /// Read-only link token for players/parents/assistant coaches — null until the coach first generates one
-  shareToken  String?   @unique
-  createdAt   DateTime  @default(now())
+  /// Read-only link token for players/parents — null until the coach first generates one
+  shareToken  String?      @unique
+  /// Coach invite link token — redeeming it grants full edit access (a TeamMember row), null until generated
+  inviteToken String?      @unique
+  createdAt   DateTime     @default(now())
   players     Player[]
   sessions    Session[]
+  members     TeamMember[]
+}
+
+/// An assistant coach with full edit access to a team, added by redeeming the team's invite link.
+model TeamMember {
+  id        String   @id @default(cuid())
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+  @@index([userId])
 }
 
 model Player {

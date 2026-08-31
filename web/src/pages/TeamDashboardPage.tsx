@@ -3,13 +3,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Navigate } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import { useCurrentTeam } from "../lib/team";
 import type { Player, TeamWeekly } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
 import { ShareLinkCard } from "../components/ShareLinkCard";
+import { InviteCoachCard } from "../components/InviteCoachCard";
+import { TeamMembersCard } from "../components/TeamMembersCard";
 
 export function TeamDashboardPage() {
   const { teamId } = useCurrentTeam();
+  const { user } = useAuth();
   const [position, setPosition] = useState("");
   const [playerId, setPlayerId] = useState("");
 
@@ -52,6 +56,10 @@ export function TeamDashboardPage() {
       </div>
 
       <ShareLinkCard teamId={teamId} />
+
+      <TeamMembersCard teamId={teamId} isOwner={team.ownerId === user?.id} />
+
+      {team.ownerId === user?.id && <InviteCoachCard teamId={teamId} />}
 
       <div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3 items-center">
         <label className="flex items-center gap-2 text-sm">

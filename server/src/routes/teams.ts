@@ -3,14 +3,14 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
-import { findOwnedTeam } from "../lib/ownership.js";
+import { findOwnedTeam, findOwnedTeamStrict } from "../lib/ownership.js";
 
 export const teamsRouter = Router();
 teamsRouter.use(requireAuth);
 
 teamsRouter.get("/", async (req: AuthedRequest, res) => {
   const teams = await prisma.team.findMany({
-    where: { ownerId: req.userId },
+    where: { OR: [{ ownerId: req.userId }, { members: { some: { userId: req.userId } } }] },
     orderBy: { createdAt: "asc" },
     include: { _count: { select: { players: true, sessions: true } } },
   });
@@ -33,6 +33,24 @@ teamsRouter.post("/", async (req: AuthedRequest, res) => {
   res.status(201).json(team);
 });
 
+// Redeems a coach invite link: adds the current (logged-in) user as an assistant coach on that team.
+teamsRouter.post("/join", async (req: AuthedRequest, res) => {
+  const inviteToken = req.body?.inviteToken as string | undefined;
+  if (!inviteToken) return res.status(400).json({ error: "inviteToken is required" });
+
+  const team = await prisma.team.findUnique({ where: { inviteToken } });
+  if (!team) return res.status(404).json({ error: "Invalid or expired invite link" });
+
+  if (team.ownerId !== req.userId) {
+    await prisma.teamMember.upsert({
+      where: { teamId_userId: { teamId: team.id, userId: req.userId! } },
+      update: {},
+      create: { teamId: team.id, userId: req.userId! },
+    });
+  }
+  res.json(team);
+});
+
 teamsRouter.get("/:teamId", async (req: AuthedRequest, res) => {
   const team = await findOwnedTeam(req.params.teamId, req.userId!);
   if (!team) return res.status(404).json({ error: "Team not found" });
@@ -50,9 +68,10 @@ teamsRouter.patch("/:teamId", async (req: AuthedRequest, res) => {
   res.json(updated);
 });
 
+// Deleting a team is owner-only — assistant coaches can't destroy shared data.
 teamsRouter.delete("/:teamId", async (req: AuthedRequest, res) => {
-  const team = await findOwnedTeam(req.params.teamId, req.userId!);
-  if (!team) return res.status(404).json({ error: "Team not found" });
+  const team = await findOwnedTeamStrict(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found, or you're not its owner" });
   await prisma.team.delete({ where: { id: team.id } });
   res.status(204).end();
 });
@@ -77,4 +96,57 @@ teamsRouter.post("/:teamId/share/rotate", async (req: AuthedRequest, res) => {
   const shareToken = crypto.randomBytes(18).toString("base64url");
   const updated = await prisma.team.update({ where: { id: team.id }, data: { shareToken } });
   res.json({ shareToken: updated.shareToken });
+});
+
+// Owner-only: returns the coach invite link token, generating one on first use.
+teamsRouter.get("/:teamId/invite", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeamStrict(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found, or you're not its owner" });
+
+  if (team.inviteToken) return res.json({ inviteToken: team.inviteToken });
+
+  const inviteToken = crypto.randomBytes(18).toString("base64url");
+  const updated = await prisma.team.update({ where: { id: team.id }, data: { inviteToken } });
+  res.json({ inviteToken: updated.inviteToken });
+});
+
+// Owner-only: generates a brand-new invite token, invalidating the old one.
+teamsRouter.post("/:teamId/invite/rotate", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeamStrict(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found, or you're not its owner" });
+
+  const inviteToken = crypto.randomBytes(18).toString("base64url");
+  const updated = await prisma.team.update({ where: { id: team.id }, data: { inviteToken } });
+  res.json({ inviteToken: updated.inviteToken });
+});
+
+// Lists the owner plus every assistant coach on the team.
+teamsRouter.get("/:teamId/members", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeam(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found" });
+
+  const [owner, members] = await Promise.all([
+    prisma.user.findUnique({ where: { id: team.ownerId }, select: { id: true, name: true, email: true } }),
+    prisma.teamMember.findMany({
+      where: { teamId: team.id },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+
+  res.json({ owner, members });
+});
+
+// Owner-only: removes an assistant coach's edit access.
+teamsRouter.delete("/:teamId/members/:memberId", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeamStrict(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found, or you're not its owner" });
+
+  const member = await prisma.teamMember.findFirst({
+    where: { id: req.params.memberId, teamId: team.id },
+  });
+  if (!member) return res.status(404).json({ error: "Coach not found on this team" });
+
+  await prisma.teamMember.delete({ where: { id: member.id } });
+  res.status(204).end();
 });
