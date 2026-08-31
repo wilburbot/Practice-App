@@ -1,8 +1,7 @@
 import { Router } from "express";
-import { prisma } from "../db.js";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
 import { findOwnedPlayer, findOwnedSession, findOwnedTeam } from "../lib/ownership.js";
-import { computeMetrics, computeServingSplits, isoWeekKey } from "../lib/metrics.js";
+import { buildPlayerProgress, buildSessionReport, buildTeamWeekly } from "../lib/reportQueries.js";
 
 export const reportsRouter = Router();
 reportsRouter.use(requireAuth);
@@ -11,70 +10,14 @@ reportsRouter.use(requireAuth);
 reportsRouter.get("/session/:sessionId", async (req: AuthedRequest, res) => {
   const session = await findOwnedSession(req.params.sessionId, req.userId!);
   if (!session) return res.status(404).json({ error: "Session not found" });
-
-  const events = await prisma.statEvent.findMany({
-    where: { sessionId: session.id },
-    include: { player: true },
-  });
-
-  const byPlayer = new Map<string, { player: (typeof events)[number]["player"]; events: typeof events }>();
-  for (const event of events) {
-    const bucket = byPlayer.get(event.playerId) ?? { player: event.player, events: [] };
-    bucket.events.push(event);
-    byPlayer.set(event.playerId, bucket);
-  }
-
-  const players = [...byPlayer.values()]
-    .map(({ player, events: playerEvents }) => ({
-      player,
-      metrics: computeMetrics(playerEvents),
-    }))
-    .sort((a, b) => b.metrics.points - a.metrics.points);
-
-  const bySetMap = new Map<number, typeof events>();
-  for (const event of events) {
-    const setNumber = event.setNumber ?? 1;
-    const bucket = bySetMap.get(setNumber) ?? [];
-    bucket.push(event);
-    bySetMap.set(setNumber, bucket);
-  }
-  const bySet = [...bySetMap.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([setNumber, setEvents]) => ({ setNumber, team: computeMetrics(setEvents) }));
-
-  res.json({
-    session,
-    team: computeMetrics(events),
-    servingSplits: computeServingSplits(events),
-    bySet,
-    players,
-  });
+  res.json(await buildSessionReport(session));
 });
 
 // Time series of a single player's metrics, bucketed by week, for progress charts.
 reportsRouter.get("/player/:playerId/progress", async (req: AuthedRequest, res) => {
   const player = await findOwnedPlayer(req.params.playerId, req.userId!);
   if (!player) return res.status(404).json({ error: "Player not found" });
-
-  const events = await prisma.statEvent.findMany({
-    where: { playerId: player.id },
-    include: { session: true },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const byWeek = new Map<string, typeof events>();
-  for (const event of events) {
-    const key = isoWeekKey(event.session.date);
-    const bucket = byWeek.get(key) ?? [];
-    bucket.push(event);
-    byWeek.set(key, bucket);
-  }
-
-  const weeks = [...byWeek.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([week, weekEvents]) => ({ week, metrics: computeMetrics(weekEvents) }));
-
-  res.json({ player, overall: computeMetrics(events), weeks });
+  res.json(await buildPlayerProgress(player));
 });
 
 // Team-wide weekly rollup: totals per week plus that week's top performers.
@@ -86,48 +29,6 @@ reportsRouter.get("/team/:teamId/weekly", async (req: AuthedRequest, res) => {
   const playerId = req.query.playerId as string | undefined;
   const position = req.query.position as string | undefined;
 
-  const events = await prisma.statEvent.findMany({
-    where: {
-      session: { teamId: team.id },
-      ...(playerId ? { playerId } : {}),
-      ...(position ? { player: { position } } : {}),
-    },
-    include: { session: true, player: true },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const byWeek = new Map<string, typeof events>();
-  for (const event of events) {
-    const key = isoWeekKey(event.session.date);
-    const bucket = byWeek.get(key) ?? [];
-    bucket.push(event);
-    byWeek.set(key, bucket);
-  }
-
-  const weeks = [...byWeek.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : 1))
-    .map(([week, weekEvents]) => {
-      const byPlayer = new Map<string, typeof weekEvents>();
-      for (const event of weekEvents) {
-        const bucket = byPlayer.get(event.playerId) ?? [];
-        bucket.push(event);
-        byPlayer.set(event.playerId, bucket);
-      }
-      const topPerformers = [...byPlayer.entries()]
-        .map(([playerId, playerEvents]) => ({
-          player: playerEvents[0]!.player,
-          metrics: computeMetrics(playerEvents),
-        }))
-        .sort((a, b) => b.metrics.points - a.metrics.points)
-        .slice(0, 3);
-
-      return {
-        week,
-        team: computeMetrics(weekEvents),
-        servingSplits: computeServingSplits(weekEvents),
-        topPerformers,
-      };
-    });
-
+  const { weeks } = await buildTeamWeekly(team.id, { playerId, position });
   res.json({ team, weeks });
 });

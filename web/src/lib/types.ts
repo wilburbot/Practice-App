@@ -14,8 +14,15 @@ export interface Team {
   name: string;
   season: string | null;
   ownerId: string;
+  shareToken?: string | null;
   createdAt: string;
   _count?: { players: number; sessions: number };
+}
+
+export interface PublicTeam {
+  id: string;
+  name: string;
+  season: string | null;
 }
 
 export interface Player {

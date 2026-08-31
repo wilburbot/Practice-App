@@ -94,6 +94,14 @@ ephemeral, so if you're deploying long-term, mount a persistent volume there —
 - All metrics (kills, efficiency %, passer rating, points, etc.) are computed on the fly from these raw events —
   see `server/src/lib/metrics.ts`
 
+## Sharing with players, parents, and assistant coaches
+
+From the **Team Dashboard**, click **Copy Link** under "Share With Players & Parents" to get a read-only link
+(`/share/<token>`) — no account or login needed. Anyone with the link can browse the dashboard, sessions, and
+video for that team, but can't edit anything (no editing routes exist behind the share token). Treat the link
+like a password: anyone who has it can view, so only send it to your team. If it ever leaks, **Generate New
+Link** invalidates the old one immediately.
+
 ## Notes & next steps
 
 - Auth is a simple email/password + JWT, intended for one coaching staff. The JWT is stored in the browser's

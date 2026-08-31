@@ -1,0 +1,36 @@
+import { Outlet, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../lib/api";
+import type { PublicTeam } from "../lib/types";
+
+export function PublicLayout() {
+  const { shareToken } = useParams<{ shareToken: string }>();
+
+  const { data: team, isError } = useQuery({
+    queryKey: ["public-team", shareToken],
+    queryFn: () => api.get<PublicTeam>(`/public/${shareToken}`),
+    enabled: !!shareToken,
+    retry: false,
+  });
+
+  return (
+    <div className="min-h-full flex flex-col">
+      <header className="bg-court-dark text-white px-4 py-3">
+        <span className="font-bold text-lg tracking-tight">🏐 {team?.name ?? "VB Coach"}</span>
+        <span className="ml-2 text-sm text-slate-300">Player &amp; parent view (read-only)</span>
+      </header>
+      <main className="flex-1 bg-slate-50">
+        {isError ? (
+          <div className="p-6 max-w-md mx-auto text-center">
+            <p className="text-lg font-semibold text-court-dark">This link isn't working</p>
+            <p className="text-slate-500 mt-2">
+              It may have been reset by the coach. Ask them to send the current link.
+            </p>
+          </div>
+        ) : (
+          <Outlet />
+        )}
+      </main>
+    </div>
+  );
+}

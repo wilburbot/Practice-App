@@ -9,6 +9,7 @@ import { playersRouter } from "./routes/players.js";
 import { sessionsRouter } from "./routes/sessions.js";
 import { statsRouter } from "./routes/stats.js";
 import { reportsRouter } from "./routes/reports.js";
+import { publicRouter } from "./routes/public.js";
 
 const UPLOAD_DIR = path.resolve(process.cwd(), "uploads");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -31,6 +32,7 @@ app.use("/players", playersRouter);
 app.use("/sessions", sessionsRouter);
 app.use("/stats", statsRouter);
 app.use("/reports", reportsRouter);
+app.use("/public", publicRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

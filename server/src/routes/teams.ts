@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
@@ -54,4 +55,26 @@ teamsRouter.delete("/:teamId", async (req: AuthedRequest, res) => {
   if (!team) return res.status(404).json({ error: "Team not found" });
   await prisma.team.delete({ where: { id: team.id } });
   res.status(204).end();
+});
+
+// Returns the team's read-only share link token, generating one on first use.
+teamsRouter.get("/:teamId/share", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeam(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found" });
+
+  if (team.shareToken) return res.json({ shareToken: team.shareToken });
+
+  const shareToken = crypto.randomBytes(18).toString("base64url");
+  const updated = await prisma.team.update({ where: { id: team.id }, data: { shareToken } });
+  res.json({ shareToken: updated.shareToken });
+});
+
+// Generates a brand-new share token, invalidating the old link (e.g. if it leaked).
+teamsRouter.post("/:teamId/share/rotate", async (req: AuthedRequest, res) => {
+  const team = await findOwnedTeam(req.params.teamId, req.userId!);
+  if (!team) return res.status(404).json({ error: "Team not found" });
+
+  const shareToken = crypto.randomBytes(18).toString("base64url");
+  const updated = await prisma.team.update({ where: { id: team.id }, data: { shareToken } });
+  res.json({ shareToken: updated.shareToken });
 });

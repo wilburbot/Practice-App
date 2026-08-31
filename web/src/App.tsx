@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { NavBar } from "./components/NavBar";
+import { PublicLayout } from "./components/PublicLayout";
 import { AuthPage } from "./pages/AuthPage";
 import { HomePage } from "./pages/HomePage";
 import { RosterPage } from "./pages/RosterPage";
@@ -9,6 +10,9 @@ import { LiveTrackingPage } from "./pages/LiveTrackingPage";
 import { SessionReviewPage } from "./pages/SessionReviewPage";
 import { PlayerProgressPage } from "./pages/PlayerProgressPage";
 import { TeamDashboardPage } from "./pages/TeamDashboardPage";
+import { PublicTeamPage } from "./pages/public/PublicTeamPage";
+import { PublicSessionPage } from "./pages/public/PublicSessionPage";
+import { PublicPlayerPage } from "./pages/public/PublicPlayerPage";
 
 function AppLayout() {
   return (
@@ -34,6 +38,11 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<AuthPage />} />
+      <Route path="/share/:shareToken" element={<PublicLayout />}>
+        <Route index element={<PublicTeamPage />} />
+        <Route path="sessions/:sessionId" element={<PublicSessionPage />} />
+        <Route path="players/:playerId" element={<PublicPlayerPage />} />
+      </Route>
       <Route element={<ProtectedRoute />}>
         <Route path="/*" element={<AppLayout />} />
       </Route>

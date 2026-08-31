@@ -17,14 +17,16 @@ model User {
 }
 
 model Team {
-  id        String    @id @default(cuid())
-  name      String
-  season    String?
-  owner     User      @relation(fields: [ownerId], references: [id])
-  ownerId   String
-  createdAt DateTime  @default(now())
-  players   Player[]
-  sessions  Session[]
+  id          String    @id @default(cuid())
+  name        String
+  season      String?
+  owner       User      @relation(fields: [ownerId], references: [id])
+  ownerId     String
+  /// Read-only link token for players/parents/assistant coaches — null until the coach first generates one
+  shareToken  String?   @unique
+  createdAt   DateTime  @default(now())
+  players     Player[]
+  sessions    Session[]
 }
 
 model Player {

@@ -6,6 +6,7 @@ import { api } from "../lib/api";
 import { useCurrentTeam } from "../lib/team";
 import type { Player, TeamWeekly } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
+import { ShareLinkCard } from "../components/ShareLinkCard";
 
 export function TeamDashboardPage() {
   const { teamId } = useCurrentTeam();
@@ -49,6 +50,8 @@ export function TeamDashboardPage() {
         <h1 className="text-xl font-bold text-court-dark">{team.name} — Team Dashboard</h1>
         <p className="text-sm text-slate-500">Weekly reporting across all logged practices and matches</p>
       </div>
+
+      <ShareLinkCard teamId={teamId} />
 
       <div className="bg-white border rounded-xl p-4 flex flex-wrap gap-3 items-center">
         <label className="flex items-center gap-2 text-sm">
