@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { PlayerMetrics } from "../lib/types";
 
@@ -46,27 +47,65 @@ export function WeeklyComparisonCard({
   weeks: { week: string; metrics: PlayerMetrics }[];
   overall: PlayerMetrics;
 }) {
+  const [weekAKey, setWeekAKey] = useState<string | null>(null);
+  const [weekBKey, setWeekBKey] = useState<string | null | undefined>(undefined); // undefined = use default
+
   if (weeks.length === 0) return null;
 
-  const thisWeek = weeks[weeks.length - 1]!;
-  const lastWeek = weeks.length > 1 ? weeks[weeks.length - 2]! : null;
+  // Defaults: most recent week vs the one before it — same behavior as before pickers existed.
+  const weekA = (weekAKey && weeks.find((w) => w.week === weekAKey)) || weeks[weeks.length - 1]!;
+  const weekB =
+    weekBKey === undefined
+      ? weeks.length > 1
+        ? weeks[weeks.length - 2]!
+        : null
+      : weekBKey === null
+        ? null
+        : weeks.find((w) => w.week === weekBKey) ?? null;
 
   // Volume stats only — Attack Eff (%) and Passer Rating (0-3) are on different scales and would be
   // unreadable squashed next to counts like Points, so they stay table-only below.
   const chartData = ROWS.filter((row) => !row.isPct && row.label !== "Passer Rating").map((row) => ({
     stat: row.label,
-    "This Week": row.value(thisWeek.metrics) ?? 0,
-    ...(lastWeek ? { "Last Week": row.value(lastWeek.metrics) ?? 0 } : {}),
+    [`Week ${weekA.week}`]: row.value(weekA.metrics) ?? 0,
+    ...(weekB ? { [`Week ${weekB.week}`]: row.value(weekB.metrics) ?? 0 } : {}),
     "Season Avg": Math.round((row.seasonValue(overall, weeks.length) ?? 0) * 10) / 10,
   }));
 
   return (
     <div className="bg-white border rounded-xl p-4">
       <h2 className="font-semibold text-court-dark mb-1">Progress Comparison</h2>
-      <p className="text-sm text-slate-500 mb-3">
-        Week {thisWeek.week}
-        {lastWeek ? ` vs week ${lastWeek.week}, and vs this season's average` : " — track a second week to see week-over-week change"}
-      </p>
+      <p className="text-sm text-slate-500 mb-3">Pick any two weeks to compare, plus this season's average.</p>
+
+      {weeks.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 text-sm">
+          <span className="font-semibold text-slate-500">Compare</span>
+          <select
+            className="tap-target border rounded-lg px-2 py-1.5"
+            value={weekA.week}
+            onChange={(e) => setWeekAKey(e.target.value)}
+          >
+            {[...weeks].reverse().map((w) => (
+              <option key={w.week} value={w.week}>
+                Week {w.week}
+              </option>
+            ))}
+          </select>
+          <span className="text-slate-400">vs</span>
+          <select
+            className="tap-target border rounded-lg px-2 py-1.5"
+            value={weekB?.week ?? ""}
+            onChange={(e) => setWeekBKey(e.target.value || null)}
+          >
+            <option value="">None (season avg only)</option>
+            {[...weeks].reverse().map((w) => (
+              <option key={w.week} value={w.week}>
+                Week {w.week}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={chartData}>
@@ -75,8 +114,8 @@ export function WeeklyComparisonCard({
           <YAxis allowDecimals={false} />
           <Tooltip />
           <Legend />
-          <Bar dataKey="This Week" fill="#ea580c" />
-          {lastWeek && <Bar dataKey="Last Week" fill="#e2e8f0" />}
+          <Bar dataKey={`Week ${weekA.week}`} fill="#ea580c" />
+          {weekB && <Bar dataKey={`Week ${weekB.week}`} fill="#e2e8f0" />}
           <Bar dataKey="Season Avg" fill="#475569" />
         </BarChart>
       </ResponsiveContainer>
@@ -86,21 +125,21 @@ export function WeeklyComparisonCard({
           <thead>
             <tr className="text-left text-slate-500 border-b">
               <th className="py-2 pr-3">Stat</th>
-              <th className="py-2 px-2 text-right">This Week</th>
-              {lastWeek && <th className="py-2 px-2 text-right">vs Last Week</th>}
+              <th className="py-2 px-2 text-right">Week {weekA.week}</th>
+              {weekB && <th className="py-2 px-2 text-right">vs Week {weekB.week}</th>}
               <th className="py-2 pl-2 text-right">Season Avg</th>
             </tr>
           </thead>
           <tbody>
             {ROWS.map((row) => {
-              const current = row.value(thisWeek.metrics);
-              const previous = lastWeek ? row.value(lastWeek.metrics) : null;
+              const current = row.value(weekA.metrics);
+              const previous = weekB ? row.value(weekB.metrics) : null;
               const seasonAvg = row.seasonValue(overall, weeks.length);
               return (
                 <tr key={row.label} className="border-b last:border-0">
                   <td className="py-2 pr-3 font-medium">{row.label}</td>
                   <td className="py-2 px-2 text-right">{fmt(current, row.isPct)}</td>
-                  {lastWeek && (
+                  {weekB && (
                     <td className="py-2 px-2 text-right">
                       <Delta current={current} previous={previous} isPct={row.isPct} />
                     </td>
