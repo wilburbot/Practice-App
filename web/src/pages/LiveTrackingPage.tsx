@@ -18,13 +18,16 @@ export function LiveTrackingPage() {
   const [currentSet, setCurrentSet] = useState(1);
   const [servingTeam, setServingTeam] = useState<ServingTeam>("OWN");
   const [pickerEventId, setPickerEventId] = useState<string | null>(null);
+  // Clip id this device started recording, captured up front since /recording/stop clears
+  // session.activeVideoClipId server-side before the upload FormData is built.
+  const [localClipId, setLocalClipId] = useState<string | null>(null);
 
   const { data: session } = useQuery({
     queryKey: ["session", sessionId],
     queryFn: () => api.get<Session>(`/sessions/${sessionId}`),
     enabled: !!sessionId,
-    // Polls so every coach's device picks up videoStartedAt as soon as whoever is holding the
-    // camera starts/stops recording, keeping everyone's stat taps synced to the same video clock.
+    // Polls so every coach's device picks up activeVideoStartedAt as soon as whoever is holding
+    // the camera starts/stops recording, keeping everyone's stat taps synced to the same video clock.
     refetchInterval: 3000,
   });
 
@@ -46,8 +49,8 @@ export function LiveTrackingPage() {
   // Shared clock: every coach's device computes the video timestamp from the session's
   // server-recorded start time, not local camera state — so taps stay in sync with the one
   // video even when logged from a device that isn't the one actually recording.
-  const videoTimestampSec = session?.videoStartedAt
-    ? (Date.now() - new Date(session.videoStartedAt).getTime()) / 1000
+  const videoTimestampSec = session?.activeVideoStartedAt
+    ? (Date.now() - new Date(session.activeVideoStartedAt).getTime()) / 1000
     : null;
 
   const logEvent = useMutation({
@@ -61,6 +64,7 @@ export function LiveTrackingPage() {
         servingTeam: session?.type === "MATCH" ? servingTeam : null,
         setNumber: session?.type === "MATCH" ? currentSet : null,
         videoTimestampSec,
+        videoClipId: session?.activeVideoClipId ?? null,
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["stats", sessionId] }),
   });
@@ -81,15 +85,18 @@ export function LiveTrackingPage() {
 
   const uploadVideo = useMutation({
     mutationFn: async ({ blob, durationSec }: { blob: Blob; durationSec: number }) => {
+      if (!localClipId) throw new Error("No active recording clip to attach this video to");
       const form = new FormData();
       const ext = blob.type.includes("mp4") ? "mp4" : "webm";
       form.append("video", blob, `session-${sessionId}.${ext}`);
       form.append("durationSec", String(durationSec));
+      form.append("clipId", localClipId);
       return api.post<Session>(`/sessions/${sessionId}/video`, form);
     },
     onMutate: () => setUploadStatus("uploading"),
     onSuccess: () => {
       setUploadStatus("done");
+      setLocalClipId(null);
       queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
     },
     onError: () => setUploadStatus("error"),
@@ -97,7 +104,10 @@ export function LiveTrackingPage() {
 
   const markRecordingStarted = useMutation({
     mutationFn: () => api.post<Session>(`/sessions/${sessionId}/recording/start`),
-    onSuccess: (updated) => queryClient.setQueryData(["session", sessionId], updated),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["session", sessionId], updated);
+      setLocalClipId(updated.activeVideoClipId);
+    },
   });
 
   const markRecordingStopped = useMutation({
@@ -133,7 +143,7 @@ export function LiveTrackingPage() {
 
   // True when a DIFFERENT device has the camera going — hide this device's camera controls so
   // two coaches can't both hit "Start Recording" and clobber each other's video reference point.
-  const recordingElsewhere = !!session?.videoStartedAt && !camera.isRecording;
+  const recordingElsewhere = !!session?.activeVideoClipId && !camera.isRecording;
 
   const findPlayerLabel = (playerId: string) => {
     const p = activePlayers.find((pl) => pl.id === playerId) ?? players?.find((pl) => pl.id === playerId);
@@ -161,7 +171,9 @@ export function LiveTrackingPage() {
         {recordingElsewhere ? (
           <p className="text-sm text-slate-600">
             🔴 Another coach is recording this session
-            {session.videoStartedAt && ` (started ${new Date(session.videoStartedAt).toLocaleTimeString()})`} — your
+            {session.activeVideoStartedAt &&
+              ` (started ${new Date(session.activeVideoStartedAt).toLocaleTimeString()})`}{" "}
+            — your
             stat taps are syncing to that video automatically. Only one device should hold the camera at a time.
           </p>
         ) : (

@@ -80,7 +80,7 @@ export function SessionsPage() {
                 </span>
                 <span className="block text-sm text-slate-500">
                   {new Date(session.date).toLocaleString()} · {session._count?.statEvents ?? 0} stats logged
-                  {session.videoUrl && " · video attached"}
+                  {!!session._count?.videos && " · video attached"}
                 </span>
               </div>
               <div className="flex gap-2">

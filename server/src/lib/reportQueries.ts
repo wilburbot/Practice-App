@@ -6,10 +6,16 @@ const ACTION_TYPES: ActionType[] = ["ATTACK", "SERVE", "RECEPTION", "DIG", "BLOC
 
 /** Full box score for one session: per-player metrics + team totals. Caller must have already verified access to `session`. */
 export async function buildSessionReport(session: Session) {
-  const events = await prisma.statEvent.findMany({
-    where: { sessionId: session.id },
-    include: { player: true },
-  });
+  const [events, videos] = await Promise.all([
+    prisma.statEvent.findMany({
+      where: { sessionId: session.id },
+      include: { player: true },
+    }),
+    prisma.sessionVideo.findMany({
+      where: { sessionId: session.id, url: { not: null } },
+      orderBy: { startedAt: "asc" },
+    }),
+  ]);
 
   const byPlayer = new Map<string, { player: (typeof events)[number]["player"]; events: typeof events }>();
   for (const event of events) {
@@ -38,6 +44,7 @@ export async function buildSessionReport(session: Session) {
 
   return {
     session,
+    videos,
     team: computeMetrics(events),
     servingSplits: computeServingSplits(events),
     bySet,
@@ -49,7 +56,7 @@ export async function buildSessionReport(session: Session) {
 export async function buildPlayerProgress(player: Player) {
   const events = await prisma.statEvent.findMany({
     where: { playerId: player.id },
-    include: { session: true },
+    include: { session: true, videoClip: true },
     orderBy: { createdAt: "asc" },
   });
 
@@ -67,11 +74,13 @@ export async function buildPlayerProgress(player: Player) {
 
   // Every tagged moment that has video, in chronological order — powers the auto-advancing
   // highlight reel. createdAt order (the query's sort) is chronological across sessions already.
+  // Each clip resolves to the exact recording it was tagged during, not just "the session's video" —
+  // a session can have several clips if the coach started/stopped recording more than once.
   const clips = events
-    .filter((e) => e.session.videoUrl && e.videoTimestampSec != null)
+    .filter((e) => e.videoClip?.url && e.videoTimestampSec != null)
     .map((e) => ({
       sessionId: e.sessionId,
-      videoUrl: e.session.videoUrl!,
+      videoUrl: e.videoClip!.url!,
       timestampSec: e.videoTimestampSec!,
       actionType: e.actionType,
       result: e.result,

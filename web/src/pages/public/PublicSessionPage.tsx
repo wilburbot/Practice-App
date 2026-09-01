@@ -15,6 +15,9 @@ export function PublicSessionPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const markerRefs = useRef(new Map<string, HTMLButtonElement>());
   const [currentTime, setCurrentTime] = useState(0);
+  const [activeClipId, setActiveClipId] = useState<string | null>(null);
+  // A seek that's waiting on a clip switch to finish loading before it can apply.
+  const pendingSeekRef = useRef<number | null>(null);
 
   const { data: report, isLoading } = useQuery({
     queryKey: ["public-session-report", shareToken, sessionId],
@@ -28,19 +31,43 @@ export function PublicSessionPage() {
     enabled: !!shareToken && !!sessionId,
   });
 
+  useEffect(() => {
+    if (!activeClipId && report?.videos.length) {
+      setActiveClipId(report.videos[0].id);
+    }
+  }, [report, activeClipId]);
+
+  const activeClip = report?.videos.find((v) => v.id === activeClipId) ?? null;
+
   const seekTo = (event: StatEvent) => {
-    if (event.videoTimestampSec == null || !videoRef.current) return;
+    if (event.videoTimestampSec == null || !event.videoClipId) return;
+    if (event.videoClipId !== activeClipId) {
+      pendingSeekRef.current = event.videoTimestampSec;
+      setActiveClipId(event.videoClipId);
+      return;
+    }
+    if (!videoRef.current) return;
     videoRef.current.currentTime = event.videoTimestampSec;
     // Tapping another marker before this play() resolves rejects the promise with a benign
     // "interrupted by a new load request" error — expected when jumping between plays quickly.
     videoRef.current.play().catch(() => {});
   };
 
+  const onLoadedMetadata = () => {
+    if (pendingSeekRef.current != null && videoRef.current) {
+      videoRef.current.currentTime = pendingSeekRef.current;
+      videoRef.current.play().catch(() => {});
+      pendingSeekRef.current = null;
+    }
+  };
+
   const markers = [...(events ?? [])]
-    .filter((e) => e.videoTimestampSec != null)
+    .filter((e) => e.videoTimestampSec != null && e.videoClipId != null)
     .sort((a, b) => (a.videoTimestampSec ?? 0) - (b.videoTimestampSec ?? 0));
 
-  const activeMarker = [...markers].reverse().find((m) => (m.videoTimestampSec ?? 0) <= currentTime);
+  const activeMarker = [...markers]
+    .reverse()
+    .find((m) => m.videoClipId === activeClipId && (m.videoTimestampSec ?? 0) <= currentTime);
 
   useEffect(() => {
     if (!activeMarker) return;
@@ -49,7 +76,7 @@ export function PublicSessionPage() {
 
   if (isLoading || !report) return <p className="p-6">Loading…</p>;
 
-  const { session, team, servingSplits, bySet, players } = report;
+  const { session, team, servingSplits, bySet, players, videos } = report;
   const hasServingData = servingSplits.pointScoring.attempts > 0 || servingSplits.sideOut.attempts > 0;
   const fmtPct = (v: number | null) => (v === null ? "—" : `${(v * 100).toFixed(0)}%`);
 
@@ -67,14 +94,33 @@ export function PublicSessionPage() {
         </Link>
       </div>
 
-      {session.videoUrl && (
+      {videos.length > 0 && activeClip && (
         <div className="bg-white border rounded-xl p-3 flex flex-col gap-3">
+          {videos.length > 1 && (
+            <div className="flex flex-wrap gap-2">
+              {videos.map((clip, i) => (
+                <button
+                  key={clip.id}
+                  onClick={() => {
+                    pendingSeekRef.current = null;
+                    setActiveClipId(clip.id);
+                  }}
+                  className={`tap-target text-xs border rounded-full px-3 py-1 font-semibold ${
+                    activeClipId === clip.id ? "bg-court text-white border-court" : "hover:bg-court hover:text-white"
+                  }`}
+                >
+                  Clip {i + 1} — {new Date(clip.startedAt).toLocaleTimeString()}
+                </button>
+              ))}
+            </div>
+          )}
           <video
             ref={videoRef}
             controls
             playsInline
             className="w-full max-h-[420px] bg-black rounded-lg"
-            src={assetUrl(session.videoUrl)}
+            src={assetUrl(activeClip.url!)}
+            onLoadedMetadata={onLoadedMetadata}
             onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
           />
           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">

@@ -54,6 +54,14 @@ export interface Player {
   createdAt: string;
 }
 
+export interface SessionVideo {
+  id: string;
+  sessionId: string;
+  url: string | null;
+  durationSec: number | null;
+  startedAt: string;
+}
+
 export interface Session {
   id: string;
   teamId: string;
@@ -61,13 +69,13 @@ export interface Session {
   date: string;
   opponent: string | null;
   notes: string | null;
-  videoUrl: string | null;
-  videoDurationSec: number | null;
-  videoStartedAt: string | null;
+  activeVideoClipId: string | null;
+  activeVideoStartedAt: string | null;
+  videos: SessionVideo[];
   recapText: string | null;
   recapGeneratedAt: string | null;
   createdAt: string;
-  _count?: { statEvents: number };
+  _count?: { statEvents: number; videos: number };
 }
 
 export interface StatEvent {
@@ -80,10 +88,12 @@ export interface StatEvent {
   servingTeam: ServingTeam | null;
   setNumber: number | null;
   videoTimestampSec: number | null;
+  videoClipId: string | null;
   targetX: number | null;
   targetY: number | null;
   createdAt: string;
   player?: Player;
+  videoClip?: SessionVideo | null;
 }
 
 export interface CourtPoint {
@@ -130,6 +140,7 @@ export interface ServingSplits {
 
 export interface SessionReport {
   session: Session;
+  videos: SessionVideo[];
   team: PlayerMetrics;
   servingSplits: ServingSplits;
   bySet: { setNumber: number; team: PlayerMetrics }[];

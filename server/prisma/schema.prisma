@@ -75,19 +75,39 @@ model Session {
   date             DateTime    @default(now())
   opponent         String?
   notes            String?
-  videoUrl         String?
-  videoDurationSec Float?
-  /// Server-authoritative clock start for the active recording, null when no one is recording.
-  /// Every coach's device computes a stat tap's videoTimestampSec from this shared reference, so
-  /// taps logged from different devices stay in sync with the one video being recorded.
-  videoStartedAt   DateTime?
+  /// Points at the SessionVideo currently being recorded, null when no one is recording. New stat
+  /// taps get linked to this clip so they stay tied to the right recording even if the coach starts
+  /// and stops recording more than once during one practice (each attempt is its own clip, never
+  /// silently overwriting a previous one).
+  activeVideoClipId String?
   /// Cached AI-generated recap so it isn't regenerated (and re-billed) on every page view — coach can regenerate
   recapText        String?
   recapGeneratedAt DateTime?
   createdAt        DateTime    @default(now())
   statEvents       StatEvent[]
+  videos           SessionVideo[]
 
   @@index([teamId])
+}
+
+/// One recorded video clip within a session. A session can have several — each Start/Stop recording
+/// cycle is its own clip — so nothing is lost if a coach records more than once in one practice, and
+/// every stat tap stays linked to the specific clip it was tagged during.
+model SessionVideo {
+  id          String      @id @default(cuid())
+  session     Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId   String
+  /// Null until the recording finishes uploading
+  url         String?
+  durationSec Float?
+  /// Server-authoritative clock start for this clip while it's being recorded — every coach's device
+  /// computes a stat tap's videoTimestampSec from this shared reference, so taps logged from
+  /// different devices stay in sync with the one video being recorded.
+  startedAt   DateTime    @default(now())
+  createdAt   DateTime    @default(now())
+  statEvents  StatEvent[]
+
+  @@index([sessionId])
 }
 
 enum ActionType {
@@ -123,6 +143,9 @@ model StatEvent {
   /// which team was serving when this happened, used for point-scoring % / side-out %
   servingTeam        ServingTeam?
   setNumber          Int?
+  /// Which recorded clip this tap's videoTimestampSec is relative to — null if no video was recording
+  videoClip          SessionVideo? @relation(fields: [videoClipId], references: [id], onDelete: SetNull)
+  videoClipId        String?
   videoTimestampSec  Float?
   /// Normalized 0-1 target location on the opponent's court, only set for ATTACK/SERVE, for tendency charts
   targetX            Float?
@@ -131,4 +154,5 @@ model StatEvent {
 
   @@index([sessionId])
   @@index([playerId])
+  @@index([videoClipId])
 }

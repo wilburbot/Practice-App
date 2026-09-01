@@ -20,6 +20,9 @@ const statEventSchema = z.object({
   servingTeam: z.enum(SERVING_TEAMS).optional().nullable(),
   setNumber: z.number().int().min(1).max(10).optional().nullable(),
   videoTimestampSec: z.number().min(0).optional().nullable(),
+  // Which recorded clip videoTimestampSec is relative to — the live tracking screen passes the
+  // session's current activeVideoClipId here so playback knows which file to seek within.
+  videoClipId: z.string().optional().nullable(),
   // Normalized 0-1 position on the opponent's court where an attack/serve landed, for tendency charts.
   targetX: z.number().min(0).max(1).optional().nullable(),
   targetY: z.number().min(0).max(1).optional().nullable(),
@@ -33,7 +36,7 @@ statsRouter.get("/", async (req: AuthedRequest, res) => {
 
   const events = await prisma.statEvent.findMany({
     where: { sessionId },
-    include: { player: true },
+    include: { player: true, videoClip: true },
     orderBy: { createdAt: "asc" },
   });
   res.json(events);
@@ -44,7 +47,7 @@ statsRouter.post("/", async (req: AuthedRequest, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
   }
-  const { sessionId, playerId } = parsed.data;
+  const { sessionId, playerId, videoClipId } = parsed.data;
 
   const [session, player] = await Promise.all([
     findOwnedSession(sessionId, req.userId!),
@@ -53,6 +56,10 @@ statsRouter.post("/", async (req: AuthedRequest, res) => {
   if (!session) return res.status(404).json({ error: "Session not found" });
   if (!player || player.teamId !== session.teamId) {
     return res.status(404).json({ error: "Player not found on this team" });
+  }
+  if (videoClipId) {
+    const clip = await prisma.sessionVideo.findFirst({ where: { id: videoClipId, sessionId } });
+    if (!clip) return res.status(404).json({ error: "Video clip not found on this session" });
   }
 
   const event = await prisma.statEvent.create({ data: parsed.data });

@@ -126,7 +126,7 @@ export function PublicTeamPage() {
                 </span>
                 <span className="block text-sm text-slate-500">
                   {new Date(session.date).toLocaleString()} · {session._count?.statEvents ?? 0} stats logged
-                  {session.videoUrl && " · video available"}
+                  {!!session._count?.videos && " · video available"}
                 </span>
               </div>
               <span className="text-court text-sm font-semibold">View →</span>

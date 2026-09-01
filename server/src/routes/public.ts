@@ -32,7 +32,7 @@ publicRouter.get("/:shareToken/sessions", async (req, res) => {
   const sessions = await prisma.session.findMany({
     where: { teamId: team.id },
     orderBy: { date: "desc" },
-    include: { _count: { select: { statEvents: true } } },
+    include: { _count: { select: { statEvents: true, videos: true } } },
   });
   res.json(sessions);
 });
@@ -49,7 +49,7 @@ publicRouter.get("/:shareToken/sessions/:sessionId/stats", async (req, res) => {
 
   const events = await prisma.statEvent.findMany({
     where: { sessionId: session.id },
-    include: { player: true },
+    include: { player: true, videoClip: true },
     orderBy: { createdAt: "asc" },
   });
   res.json(events);
