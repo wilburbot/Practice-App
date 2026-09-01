@@ -158,10 +158,19 @@ export interface HighlightClip {
   opponent: string | null;
 }
 
+export interface SessionProgressPoint {
+  sessionId: string;
+  date: string;
+  type: SessionType;
+  opponent: string | null;
+  metrics: PlayerMetrics;
+}
+
 export interface PlayerProgress {
   player: Player;
   overall: PlayerMetrics;
   weeks: { week: string; metrics: PlayerMetrics }[];
+  sessions: SessionProgressPoint[];
   tendencies: CourtTendencies;
   clips: HighlightClip[];
 }

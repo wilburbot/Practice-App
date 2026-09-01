@@ -13,7 +13,7 @@ import {
 import { api } from "../lib/api";
 import type { PlayerProgress } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
-import { WeeklyComparisonCard } from "../components/WeeklyComparisonCard";
+import { ProgressComparisonCard } from "../components/ProgressComparisonCard";
 import { CourtTendencyChart } from "../components/CourtTendencyChart";
 import { HighlightReelCard } from "../components/HighlightReelCard";
 
@@ -28,7 +28,7 @@ export function PlayerProgressPage() {
 
   if (isLoading || !data) return <p className="p-6">Loading…</p>;
 
-  const { player, overall, weeks, tendencies, clips } = data;
+  const { player, overall, weeks, sessions, tendencies, clips } = data;
 
   const chartData = weeks.map((w) => ({
     week: w.week.replace(/^\d{4}-/, ""),
@@ -58,7 +58,7 @@ export function PlayerProgressPage() {
 
       <HighlightReelCard clips={clips} />
 
-      <WeeklyComparisonCard weeks={weeks} overall={overall} />
+      <ProgressComparisonCard weeks={weeks} sessions={sessions} overall={overall} />
 
       <CourtTendencyChart tendencies={tendencies} />
 

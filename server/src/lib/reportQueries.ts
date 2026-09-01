@@ -72,6 +72,22 @@ export async function buildPlayerProgress(player: Player) {
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .map(([week, weekEvents]) => ({ week, metrics: computeMetrics(weekEvents) }));
 
+  const bySession = new Map<string, typeof events>();
+  for (const event of events) {
+    const bucket = bySession.get(event.sessionId) ?? [];
+    bucket.push(event);
+    bySession.set(event.sessionId, bucket);
+  }
+  const sessions = [...bySession.values()]
+    .map((sessionEvents) => ({
+      sessionId: sessionEvents[0]!.sessionId,
+      date: sessionEvents[0]!.session.date,
+      type: sessionEvents[0]!.session.type,
+      opponent: sessionEvents[0]!.session.opponent,
+      metrics: computeMetrics(sessionEvents),
+    }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
   // Every tagged moment that has video, in chronological order — powers the auto-advancing
   // highlight reel. createdAt order (the query's sort) is chronological across sessions already.
   // Each clip resolves to the exact recording it was tagged during, not just "the session's video" —
@@ -93,6 +109,7 @@ export async function buildPlayerProgress(player: Player) {
     player,
     overall: computeMetrics(events),
     weeks,
+    sessions,
     tendencies: computeCourtTendencies(events),
     clips,
   };
