@@ -10,7 +10,7 @@ const SKILL_LABELS: Record<ActionType, { title: string; success: string; error: 
   SET: { title: "Set", success: "Assists", error: "Errors", attempt: "In Play" },
 };
 
-const RESULT_COLORS = { SUCCESS: "#ea580c", ERROR: "#0ea5e9", ATTEMPT: "#cbd5e1" };
+const RESULT_COLORS = { SUCCESS: "#059669", ERROR: "#dc2626", ATTEMPT: "#cbd5e1" };
 
 function fmtPct(value: number | null): string {
   return value === null ? "—" : `${Math.round(value * 100)}%`;

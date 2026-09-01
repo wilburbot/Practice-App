@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { ApiError } from "../lib/api";
 import { takePendingInvite } from "../lib/pendingInvite";
+import { BrandMark } from "../components/BrandMark";
 
 export function AuthPage() {
   const { isAuthenticated, login, signup } = useAuth();
@@ -33,56 +34,62 @@ export function AuthPage() {
   };
 
   return (
-    <div className="min-h-full flex items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">🏐 VB Coach</h1>
-        <p className="text-sm text-slate-500 mb-6">
-          Live stat tracking, video, and progress reports for your team.
-        </p>
+    <div className="min-h-full flex items-center justify-center bg-court-light px-4">
+      <div className="w-full max-w-sm bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="h-1.5 bg-court" />
+        <div className="p-6">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 mb-1">
+            <BrandMark size={32} />
+            VB Coach
+          </h1>
+          <p className="text-sm text-slate-500 mb-6">
+            Live stat tracking, video, and progress reports for your team.
+          </p>
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-3">
-          {mode === "signup" && (
+          <form onSubmit={onSubmit} className="flex flex-col gap-3">
+            {mode === "signup" && (
+              <input
+                className="tap-target border rounded-lg px-3 py-2"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            )}
             <input
               className="tap-target border rounded-lg px-3 py-2"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
-          )}
-          <input
-            className="tap-target border rounded-lg px-3 py-2"
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            className="tap-target border rounded-lg px-3 py-2"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            minLength={8}
-            required
-          />
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={busy}
-            className="tap-target bg-court text-white rounded-lg py-2 font-semibold disabled:opacity-50"
-          >
-            {busy ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
-          </button>
-        </form>
+            <input
+              className="tap-target border rounded-lg px-3 py-2"
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              minLength={8}
+              required
+            />
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <button
+              type="submit"
+              disabled={busy}
+              className="tap-target bg-court text-white rounded-lg py-2 font-semibold disabled:opacity-50"
+            >
+              {busy ? "Please wait…" : mode === "login" ? "Log in" : "Create account"}
+            </button>
+          </form>
 
-        <button
-          className="tap-target text-sm text-court mt-4 underline"
-          onClick={() => setMode(mode === "login" ? "signup" : "login")}
-        >
-          {mode === "login" ? "New coach? Create an account" : "Already have an account? Log in"}
-        </button>
+          <button
+            className="tap-target text-sm text-court mt-4 underline"
+            onClick={() => setMode(mode === "login" ? "signup" : "login")}
+          >
+            {mode === "login" ? "New coach? Create an account" : "Already have an account? Log in"}
+          </button>
+        </div>
       </div>
     </div>
   );

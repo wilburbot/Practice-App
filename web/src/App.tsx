@@ -21,7 +21,7 @@ function AppLayout() {
   return (
     <div className="min-h-full flex flex-col">
       <NavBar />
-      <main className="flex-1 bg-slate-50">
+      <main className="flex-1 bg-court-light">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/roster" element={<RosterPage />} />
