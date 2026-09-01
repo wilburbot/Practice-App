@@ -10,7 +10,7 @@ const SKILL_LABELS: Record<ActionType, { title: string; success: string; error: 
   SET: { title: "Set", success: "Assists", error: "Errors", attempt: "In Play" },
 };
 
-const RESULT_COLORS = { SUCCESS: "#ea580c", ERROR: "#dc2626", ATTEMPT: "#cbd5e1" };
+const RESULT_COLORS = { SUCCESS: "#ea580c", ERROR: "#0ea5e9", ATTEMPT: "#cbd5e1" };
 
 function fmtPct(value: number | null): string {
   return value === null ? "—" : `${Math.round(value * 100)}%`;
@@ -31,6 +31,9 @@ function SkillCard({ skill }: { skill: SkillBreakdownEntry }) {
     name: `${p.player.jerseyNumber != null ? `#${p.player.jerseyNumber} ` : ""}${p.player.firstName}`,
     [labels.success]: p.success,
   }));
+  // Tall enough for every bar to get its own row so Recharts never has to drop alternating labels
+  // to avoid overlap.
+  const barChartHeight = Math.max(180, barData.length * 32);
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4">
@@ -68,11 +71,11 @@ function SkillCard({ skill }: { skill: SkillBreakdownEntry }) {
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 mb-1">Top by {labels.success}</p>
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={barChartHeight}>
               <BarChart data={barData} layout="vertical" margin={{ left: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" allowDecimals={false} />
-                <YAxis type="category" dataKey="name" width={70} tick={{ fontSize: 12 }} />
+                <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 12 }} interval={0} />
                 <Tooltip />
                 <Bar dataKey={labels.success} fill="#ea580c" radius={[0, 4, 4, 0]} />
               </BarChart>
