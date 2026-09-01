@@ -5,12 +5,13 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { useCurrentTeam } from "../lib/team";
-import type { Player, TeamWeekly } from "../lib/types";
+import type { Player, PlayerProgress, TeamWeekly } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
 import { ShareLinkCard } from "../components/ShareLinkCard";
 import { InviteCoachCard } from "../components/InviteCoachCard";
 import { TeamMembersCard } from "../components/TeamMembersCard";
 import { AskTeamCard } from "../components/AskTeamCard";
+import { HighlightReelCard } from "../components/HighlightReelCard";
 
 export function TeamDashboardPage() {
   const { teamId } = useCurrentTeam();
@@ -37,6 +38,12 @@ export function TeamDashboardPage() {
     queryKey: ["team-weekly", teamId, position, playerId],
     queryFn: () => api.get<TeamWeekly>(`/reports/team/${teamId}/weekly?${params.toString()}`),
     enabled: !!teamId,
+  });
+
+  const { data: playerProgress } = useQuery({
+    queryKey: ["player-progress", playerId],
+    queryFn: () => api.get<PlayerProgress>(`/reports/player/${playerId}/progress`),
+    enabled: !!playerId,
   });
 
   if (!teamId) return <Navigate to="/" replace />;
@@ -108,6 +115,8 @@ export function TeamDashboardPage() {
           </button>
         )}
       </div>
+
+      {playerId && playerProgress && <HighlightReelCard clips={playerProgress.clips} />}
 
       {weeks.length === 0 ? (
         <p className="text-slate-500">

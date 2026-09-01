@@ -3,8 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "../../lib/api";
-import type { Player, Session, TeamWeekly } from "../../lib/types";
+import type { Player, PlayerProgress, Session, TeamWeekly } from "../../lib/types";
 import { MetricsTable } from "../../components/MetricsTable";
+import { HighlightReelCard } from "../../components/HighlightReelCard";
 
 export function PublicTeamPage() {
   const { shareToken } = useParams<{ shareToken: string }>();
@@ -36,6 +37,12 @@ export function PublicTeamPage() {
     queryKey: ["public-weekly", shareToken, position, playerId],
     queryFn: () => api.get<TeamWeekly>(`/public/${shareToken}/weekly?${params.toString()}`),
     enabled: !!shareToken,
+  });
+
+  const { data: playerProgress } = useQuery({
+    queryKey: ["public-player-progress", shareToken, playerId],
+    queryFn: () => api.get<PlayerProgress>(`/public/${shareToken}/players/${playerId}/progress`),
+    enabled: !!shareToken && !!playerId,
   });
 
   const weeks = weekly?.weeks ?? [];
@@ -86,6 +93,8 @@ export function PublicTeamPage() {
           </select>
         </label>
       </div>
+
+      {playerId && playerProgress && <HighlightReelCard clips={playerProgress.clips} />}
 
       {weeks.length > 0 && (
         <div className="bg-white border rounded-xl p-4">
