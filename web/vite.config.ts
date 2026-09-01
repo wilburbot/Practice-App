@@ -13,7 +13,7 @@ export default defineConfig({
         short_name: "VBCoach",
         description: "Live stat tracking, video, and progress reports for volleyball practices and matches",
         theme_color: "#ea580c",
-        background_color: "#ffffff",
+        background_color: "#fff7ed",
         display: "standalone",
         orientation: "any",
         start_url: "/",
