@@ -20,7 +20,7 @@ export function PublicLayout() {
         <div className="h-1 bg-court" />
         <div className="px-4 py-3 flex items-center gap-2">
           <BrandMark size={24} />
-          <span className="font-bold text-lg tracking-tight text-slate-900">{team?.name ?? "VB Coach"}</span>
+          <span className="font-bold text-lg tracking-tight text-slate-900">{team?.name ?? "Pacman"}</span>
           <span className="ml-1 text-sm text-slate-500">Player &amp; parent view (read-only)</span>
         </div>
       </header>

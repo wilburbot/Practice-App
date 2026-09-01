@@ -40,7 +40,7 @@ export function AuthPage() {
         <div className="p-6">
           <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900 mb-1">
             <BrandMark size={32} />
-            VB Coach
+            Pacman
           </h1>
           <p className="text-sm text-slate-500 mb-6">
             Live stat tracking, video, and progress reports for your team.

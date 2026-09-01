@@ -89,7 +89,7 @@ export function TeamMembersCard({ teamId, isOwner }: { teamId: string; isOwner: 
           </button>
           {error && <p className="text-sm text-red-600 w-full">{error}</p>}
           <p className="text-xs text-slate-400 w-full">
-            Only works if they already have a VB Coach account — otherwise send them the invite link below.
+            Only works if they already have a Pacman account — otherwise send them the invite link below.
           </p>
         </form>
       )}

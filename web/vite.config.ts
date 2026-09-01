@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg", "apple-touch-icon.png"],
       manifest: {
-        name: "Volleyball Coach",
-        short_name: "VBCoach",
+        name: "Pacman",
+        short_name: "Pacman",
         description: "Live stat tracking, video, and progress reports for volleyball practices and matches",
         theme_color: "#ea580c",
         background_color: "#fff7ed",

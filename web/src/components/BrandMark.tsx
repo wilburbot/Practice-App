@@ -1,10 +1,7 @@
 export function BrandMark({ size = 28 }: { size?: number }) {
   return (
-    <span
-      className="inline-flex items-center justify-center rounded-lg bg-court text-white font-bold shrink-0"
-      style={{ width: size, height: size, fontSize: size * 0.5 }}
-    >
-      V
-    </span>
+    <svg width={size} height={size} viewBox="0 0 32 32" className="shrink-0" aria-hidden="true">
+      <path d="M16 16 L26.39 10 A12 12 0 1 1 26.39 22 Z" fill="#ea580c" />
+    </svg>
   );
 }

@@ -20,7 +20,7 @@ export function NavBar() {
         <div className="flex items-center gap-5 flex-wrap">
           <span className="flex items-center gap-2 font-bold text-lg tracking-tight text-slate-900">
             <BrandMark />
-            VB Coach
+            Pacman
           </span>
           <nav className="flex gap-4">
             {links.map((link) => (
