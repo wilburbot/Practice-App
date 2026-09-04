@@ -11,13 +11,22 @@ interface Row {
   isPct?: boolean;
 }
 
+function ratio(success: number, attempts: number): number | null {
+  return attempts > 0 ? success / attempts : null;
+}
+
 const ROWS: Row[] = [
   { label: "Kills", value: (m) => m.ATTACK.success },
+  { label: "Att", value: (m) => m.ATTACK.attempts },
   { label: "Attack Eff", value: (m) => m.ATTACK.efficiency, isPct: true },
   { label: "Aces", value: (m) => m.SERVE.success },
+  { label: "Good Rec%", value: (m) => ratio(m.RECEPTION.success, m.RECEPTION.attempts), isPct: true },
+  { label: "Rec Total", value: (m) => m.RECEPTION.attempts },
+  { label: "Rec Err%", value: (m) => ratio(m.RECEPTION.error, m.RECEPTION.attempts), isPct: true },
   { label: "Digs", value: (m) => m.DIG.success },
   { label: "Blocks", value: (m) => m.BLOCK.success },
   { label: "Assists", value: (m) => m.SET.success },
+  { label: "+/-", value: (m) => m.points - m.totalErrors },
   { label: "Points", value: (m) => m.points },
   { label: "Errors", value: (m) => m.totalErrors },
 ];

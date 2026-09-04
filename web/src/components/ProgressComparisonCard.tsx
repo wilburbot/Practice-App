@@ -9,14 +9,33 @@ interface Row {
   isPct?: boolean;
 }
 
+function ratio(success: number, attempts: number): number | null {
+  return attempts > 0 ? success / attempts : null;
+}
+
 const ROWS: Row[] = [
   { label: "Kills", value: (m) => m.ATTACK.success, seasonValue: (o, n) => o.ATTACK.success / n },
+  { label: "Att", value: (m) => m.ATTACK.attempts, seasonValue: (o, n) => o.ATTACK.attempts / n },
   { label: "Attack Eff", value: (m) => m.ATTACK.efficiency, seasonValue: (o) => o.ATTACK.efficiency, isPct: true },
   { label: "Aces", value: (m) => m.SERVE.success, seasonValue: (o, n) => o.SERVE.success / n },
   { label: "Passer Rating", value: (m) => m.avgPassRating, seasonValue: (o) => o.avgPassRating },
+  {
+    label: "Good Rec%",
+    value: (m) => ratio(m.RECEPTION.success, m.RECEPTION.attempts),
+    seasonValue: (o) => ratio(o.RECEPTION.success, o.RECEPTION.attempts),
+    isPct: true,
+  },
+  { label: "Rec Total", value: (m) => m.RECEPTION.attempts, seasonValue: (o, n) => o.RECEPTION.attempts / n },
+  {
+    label: "Rec Err%",
+    value: (m) => ratio(m.RECEPTION.error, m.RECEPTION.attempts),
+    seasonValue: (o) => ratio(o.RECEPTION.error, o.RECEPTION.attempts),
+    isPct: true,
+  },
   { label: "Digs", value: (m) => m.DIG.success, seasonValue: (o, n) => o.DIG.success / n },
   { label: "Blocks", value: (m) => m.BLOCK.success, seasonValue: (o, n) => o.BLOCK.success / n },
   { label: "Assists", value: (m) => m.SET.success, seasonValue: (o, n) => o.SET.success / n },
+  { label: "+/-", value: (m) => m.points - m.totalErrors, seasonValue: (o, n) => (o.points - o.totalErrors) / n },
   { label: "Points", value: (m) => m.points, seasonValue: (o, n) => o.points / n },
 ];
 
