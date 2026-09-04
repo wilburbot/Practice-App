@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import path from "node:path";
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
@@ -65,6 +66,7 @@ sessionsRouter.get("/", async (req: AuthedRequest, res) => {
 
 const sessionSchema = z.object({
   teamId: z.string().min(1),
+  name: z.string().trim().max(120).optional().nullable(),
   type: z.enum(["PRACTICE", "MATCH", "SCRIMMAGE"]).default("PRACTICE"),
   date: z.string().datetime().optional(),
   opponent: z.string().optional().nullable(),
@@ -225,3 +227,48 @@ sessionsRouter.post(
     res.status(201).json(await serializeSession(updated));
   },
 );
+
+// Adds a video clip outside the live-recording flow (e.g. a phone recording added after practice) —
+// creates its own SessionVideo row directly, so it never touches activeVideoClipId or the shared clock.
+sessionsRouter.post(
+  "/:sessionId/video/manual",
+  upload.single("video"),
+  async (req: AuthedRequest, res) => {
+    const session = await findOwnedSession(req.params.sessionId, req.userId!);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+    if (!req.file) return res.status(400).json({ error: "No video file uploaded" });
+
+    const durationSec = req.body.durationSec ? Number(req.body.durationSec) : undefined;
+    await prisma.sessionVideo.create({
+      data: {
+        sessionId: session.id,
+        url: `/uploads/${req.file.filename}`,
+        durationSec: Number.isFinite(durationSec) ? durationSec : undefined,
+      },
+    });
+
+    res.status(201).json(await serializeSession(session));
+  },
+);
+
+// Removes one video clip (and its file). Stat taps that were linked to it keep their timestamp but
+// lose the video reference (onDelete: SetNull), same as if that clip never had a file uploaded.
+sessionsRouter.delete("/:sessionId/video/:clipId", async (req: AuthedRequest, res) => {
+  const session = await findOwnedSession(req.params.sessionId, req.userId!);
+  if (!session) return res.status(404).json({ error: "Session not found" });
+
+  const clip = await prisma.sessionVideo.findFirst({
+    where: { id: req.params.clipId, sessionId: session.id },
+  });
+  if (!clip) return res.status(404).json({ error: "Video clip not found" });
+
+  await prisma.sessionVideo.delete({ where: { id: clip.id } });
+
+  if (clip.url) {
+    const filePath = path.join(UPLOAD_DIR, path.basename(clip.url));
+    await fs.unlink(filePath).catch(() => {});
+  }
+
+  const updated = await prisma.session.findUniqueOrThrow({ where: { id: session.id } });
+  res.json(await serializeSession(updated));
+});

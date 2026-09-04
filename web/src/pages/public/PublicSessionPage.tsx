@@ -85,7 +85,7 @@ export function PublicSessionPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-court-dark">
-            {session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type}
+            {session.name || (session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type)}
           </h1>
           <p className="text-sm text-slate-500">{new Date(session.date).toLocaleString()}</p>
         </div>

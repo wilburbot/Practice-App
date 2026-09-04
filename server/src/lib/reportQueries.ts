@@ -81,6 +81,7 @@ export async function buildPlayerProgress(player: Player) {
   const sessions = [...bySession.values()]
     .map((sessionEvents) => ({
       sessionId: sessionEvents[0]!.sessionId,
+      name: sessionEvents[0]!.session.name,
       date: sessionEvents[0]!.session.date,
       type: sessionEvents[0]!.session.type,
       opponent: sessionEvents[0]!.session.opponent,
@@ -155,11 +156,37 @@ export async function buildTeamWeekly(
         .sort((a, b) => b.metrics.points - a.metrics.points)
         .slice(0, 3);
 
+      const bySession = new Map<string, typeof weekEvents>();
+      for (const event of weekEvents) {
+        const bucket = bySession.get(event.sessionId) ?? [];
+        bucket.push(event);
+        bySession.set(event.sessionId, bucket);
+      }
+      const sessions = [...bySession.values()]
+        .map((sessionEvents) => ({
+          sessionId: sessionEvents[0]!.sessionId,
+          name: sessionEvents[0]!.session.name,
+          date: sessionEvents[0]!.session.date,
+          type: sessionEvents[0]!.session.type,
+          opponent: sessionEvents[0]!.session.opponent,
+          metrics: computeMetrics(sessionEvents),
+        }))
+        .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+      const allPlayers = [...byPlayer.entries()]
+        .map(([, playerEvents]) => ({
+          player: playerEvents[0]!.player,
+          metrics: computeMetrics(playerEvents),
+        }))
+        .sort((a, b) => b.metrics.points - a.metrics.points);
+
       return {
         week,
         team: computeMetrics(weekEvents),
         servingSplits: computeServingSplits(weekEvents),
         topPerformers,
+        players: allPlayers,
+        sessions,
       };
     });
 
@@ -172,11 +199,11 @@ export async function buildTeamWeekly(
  */
 export async function buildSkillBreakdown(
   teamId: string,
-  filters: { playerId?: string; position?: string } = {},
+  filters: { playerId?: string; position?: string; sessionId?: string } = {},
 ) {
   const events = await prisma.statEvent.findMany({
     where: {
-      session: { teamId },
+      session: { teamId, ...(filters.sessionId ? { id: filters.sessionId } : {}) },
       ...(filters.playerId ? { playerId: filters.playerId } : {}),
       ...(filters.position ? { player: { position: filters.position } } : {}),
     },

@@ -6,6 +6,7 @@ import { api } from "../../lib/api";
 import type { Player, PlayerProgress, Session, TeamWeekly } from "../../lib/types";
 import { MetricsTable } from "../../components/MetricsTable";
 import { HighlightReelCard } from "../../components/HighlightReelCard";
+import { TeamWeekComparisonCard } from "../../components/TeamWeekComparisonCard";
 
 export function PublicTeamPage() {
   const { shareToken } = useParams<{ shareToken: string }>();
@@ -113,6 +114,11 @@ export function PublicTeamPage() {
         </div>
       )}
 
+      <TeamWeekComparisonCard
+        weeks={weeks}
+        scopeLabel={playerId ? "this player" : position ? `${position}s` : "the team"}
+      />
+
       {[...weeks].reverse().map((w) => (
         <div key={w.week} className="bg-white border rounded-xl p-4">
           <h3 className="font-semibold text-court-dark mb-2">Week {w.week}</h3>
@@ -131,7 +137,7 @@ export function PublicTeamPage() {
             >
               <div>
                 <span className="font-semibold">
-                  {session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type}
+                  {session.name || (session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type)}
                 </span>
                 <span className="block text-sm text-slate-500">
                   {new Date(session.date).toLocaleString()} · {session._count?.statEvents ?? 0} stats logged

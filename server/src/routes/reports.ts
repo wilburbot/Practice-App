@@ -43,8 +43,9 @@ reportsRouter.get("/team/:teamId/skills", async (req: AuthedRequest, res) => {
 
   const playerId = req.query.playerId as string | undefined;
   const position = req.query.position as string | undefined;
+  const sessionId = req.query.sessionId as string | undefined;
 
-  const breakdown = await buildSkillBreakdown(team.id, { playerId, position });
+  const breakdown = await buildSkillBreakdown(team.id, { playerId, position, sessionId });
   res.json({ team, ...breakdown });
 });
 

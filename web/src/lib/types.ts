@@ -65,6 +65,7 @@ export interface SessionVideo {
 export interface Session {
   id: string;
   teamId: string;
+  name: string | null;
   type: SessionType;
   date: string;
   opponent: string | null;
@@ -160,6 +161,7 @@ export interface HighlightClip {
 
 export interface SessionProgressPoint {
   sessionId: string;
+  name: string | null;
   date: string;
   type: SessionType;
   opponent: string | null;
@@ -182,6 +184,8 @@ export interface TeamWeekly {
     team: PlayerMetrics;
     servingSplits: ServingSplits;
     topPerformers: { player: Player; metrics: PlayerMetrics }[];
+    players: { player: Player; metrics: PlayerMetrics }[];
+    sessions: SessionProgressPoint[];
   }[];
 }
 

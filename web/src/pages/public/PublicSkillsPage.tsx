@@ -2,17 +2,29 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../lib/api";
-import type { Player, TeamSkillBreakdown } from "../../lib/types";
+import type { Player, Session, TeamSkillBreakdown } from "../../lib/types";
 import { SkillDashboard } from "../../components/SkillDashboard";
+
+function sessionOptionLabel(session: Session): string {
+  const what = session.name || (session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type);
+  return `${what} — ${new Date(session.date).toLocaleDateString()}`;
+}
 
 export function PublicSkillsPage() {
   const { shareToken } = useParams<{ shareToken: string }>();
   const [position, setPosition] = useState("");
   const [playerId, setPlayerId] = useState("");
+  const [sessionId, setSessionId] = useState("");
 
   const { data: players } = useQuery({
     queryKey: ["public-players", shareToken],
     queryFn: () => api.get<Player[]>(`/public/${shareToken}/players`),
+    enabled: !!shareToken,
+  });
+
+  const { data: sessions } = useQuery({
+    queryKey: ["public-sessions", shareToken],
+    queryFn: () => api.get<Session[]>(`/public/${shareToken}/sessions`),
     enabled: !!shareToken,
   });
 
@@ -24,9 +36,10 @@ export function PublicSkillsPage() {
   const params = new URLSearchParams();
   if (position) params.set("position", position);
   if (playerId) params.set("playerId", playerId);
+  if (sessionId) params.set("sessionId", sessionId);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["public-skills", shareToken, position, playerId],
+    queryKey: ["public-skills", shareToken, position, playerId, sessionId],
     queryFn: () => api.get<TeamSkillBreakdown>(`/public/${shareToken}/skills?${params.toString()}`),
     enabled: !!shareToken,
   });
@@ -75,6 +88,23 @@ export function PublicSkillsPage() {
                 {p.firstName} {p.lastName}
               </option>
             ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <span className="font-semibold text-slate-500">Session</span>
+          <select
+            className="tap-target border rounded-lg px-3 py-2"
+            value={sessionId}
+            onChange={(e) => setSessionId(e.target.value)}
+          >
+            <option value="">All season</option>
+            {[...(sessions ?? [])]
+              .sort((a, b) => (a.date < b.date ? 1 : -1))
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {sessionOptionLabel(s)}
+                </option>
+              ))}
           </select>
         </label>
       </div>

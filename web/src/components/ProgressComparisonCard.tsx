@@ -49,7 +49,8 @@ interface Bucket {
 type Mode = "session" | "weekly" | "overall";
 
 function sessionLabel(s: SessionProgressPoint): string {
-  const what = s.type === "MATCH" ? `vs ${s.opponent ?? "Opponent"}` : s.type === "SCRIMMAGE" ? "Scrimmage" : "Practice";
+  const what =
+    s.name || (s.type === "MATCH" ? `vs ${s.opponent ?? "Opponent"}` : s.type === "SCRIMMAGE" ? "Scrimmage" : "Practice");
   return `${what} — ${new Date(s.date).toLocaleDateString()}`;
 }
 

@@ -5,11 +5,18 @@ import { api } from "../lib/api";
 import { useCurrentTeam } from "../lib/team";
 import type { Session, SessionType } from "../lib/types";
 
+function sessionLabel(session: Session): string {
+  if (session.name) return session.name;
+  return session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type;
+}
+
 export function SessionsPage() {
   const { teamId } = useCurrentTeam();
   const queryClient = useQueryClient();
   const [type, setType] = useState<SessionType>("PRACTICE");
   const [opponent, setOpponent] = useState("");
+  const [name, setName] = useState("");
+  const [date, setDate] = useState("");
 
   const { data: sessions, isLoading } = useQuery({
     queryKey: ["sessions", teamId],
@@ -22,12 +29,21 @@ export function SessionsPage() {
       api.post<Session>("/sessions", {
         teamId,
         type,
+        name: name.trim() || null,
+        date: date ? new Date(date).toISOString() : undefined,
         opponent: type === "MATCH" ? opponent || null : null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sessions", teamId] });
       setOpponent("");
+      setName("");
+      setDate("");
     },
+  });
+
+  const deleteSession = useMutation({
+    mutationFn: (sessionId: string) => api.delete(`/sessions/${sessionId}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sessions", teamId] }),
   });
 
   if (!teamId) return <Navigate to="/" replace />;
@@ -35,6 +51,12 @@ export function SessionsPage() {
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     createSession.mutate();
+  };
+
+  const onDelete = (session: Session) => {
+    if (window.confirm(`Delete "${sessionLabel(session)}"? This removes its stats and video permanently.`)) {
+      deleteSession.mutate(session.id);
+    }
   };
 
   return (
@@ -51,6 +73,18 @@ export function SessionsPage() {
           <option value="MATCH">Match</option>
           <option value="SCRIMMAGE">Scrimmage</option>
         </select>
+        <input
+          className="tap-target border rounded-lg px-3 py-2 flex-1 min-w-[140px]"
+          placeholder="Name (optional)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="tap-target border rounded-lg px-3 py-2"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
         {type === "MATCH" && (
           <input
             className="tap-target border rounded-lg px-3 py-2 flex-1 min-w-[160px]"
@@ -75,9 +109,12 @@ export function SessionsPage() {
           {sessions?.map((session) => (
             <div key={session.id} className="bg-white border rounded-xl px-4 py-3 flex items-center justify-between gap-3">
               <div>
-                <span className="font-semibold">
-                  {session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type}
-                </span>
+                <span className="font-semibold">{sessionLabel(session)}</span>
+                {session.name && (
+                  <span className="ml-2 text-xs text-slate-400">
+                    {session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type}
+                  </span>
+                )}
                 <span className="block text-sm text-slate-500">
                   {new Date(session.date).toLocaleString()} · {session._count?.statEvents ?? 0} stats logged
                   {!!session._count?.videos && " · video attached"}
@@ -96,6 +133,13 @@ export function SessionsPage() {
                 >
                   Review
                 </Link>
+                <button
+                  onClick={() => onDelete(session)}
+                  className="tap-target text-slate-400 text-sm px-2 hover:text-red-600"
+                  aria-label="Delete session"
+                >
+                  ✕
+                </button>
               </div>
             </div>
           ))}

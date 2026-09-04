@@ -12,12 +12,18 @@ import { InviteCoachCard } from "../components/InviteCoachCard";
 import { TeamMembersCard } from "../components/TeamMembersCard";
 import { AskTeamCard } from "../components/AskTeamCard";
 import { HighlightReelCard } from "../components/HighlightReelCard";
+import { TeamWeekComparisonCard } from "../components/TeamWeekComparisonCard";
+
+function sessionLabel(name: string | null, type: string, opponent: string | null): string {
+  return name || (type === "MATCH" ? `vs ${opponent ?? "Opponent"}` : type);
+}
 
 export function TeamDashboardPage() {
   const { teamId } = useCurrentTeam();
   const { user } = useAuth();
   const [position, setPosition] = useState("");
   const [playerId, setPlayerId] = useState("");
+  const [expandedWeek, setExpandedWeek] = useState<string | null>(null);
 
   const { data: players } = useQuery({
     queryKey: ["players", teamId],
@@ -141,31 +147,77 @@ export function TeamDashboardPage() {
             </ResponsiveContainer>
           </div>
 
+          <TeamWeekComparisonCard
+            weeks={weeks}
+            scopeLabel={playerId ? "this player" : position ? `${position}s` : "the team"}
+          />
+
           <div className="flex flex-col gap-4">
-            {[...weeks].reverse().map((w) => (
-              <div key={w.week} className="bg-white border rounded-xl p-4">
-                <h3 className="font-semibold text-court-dark mb-2">Week {w.week}</h3>
-                <MetricsTable
-                  rows={[{ label: playerId ? "Player" : position ? `${position}s` : "Team", metrics: w.team }]}
-                />
-                {!playerId && w.topPerformers.length > 0 && (
-                  <div className="mt-3">
-                    <h4 className="text-sm font-semibold text-slate-500 mb-1">Top Performers</h4>
-                    <ul className="text-sm flex flex-col gap-1">
-                      {w.topPerformers.map((tp) => (
-                        <li key={tp.player.id}>
-                          <a href={`/players/${tp.player.id}`} className="underline">
-                            {tp.player.jerseyNumber != null ? `#${tp.player.jerseyNumber} ` : ""}
-                            {tp.player.firstName} {tp.player.lastName}
-                          </a>{" "}
-                          — {tp.metrics.points} pts
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))}
+            {[...weeks].reverse().map((w) => {
+              const isOpen = expandedWeek === w.week;
+              return (
+                <div key={w.week} className="bg-white border rounded-xl p-4">
+                  <button
+                    onClick={() => setExpandedWeek(isOpen ? null : w.week)}
+                    className="tap-target w-full flex items-center justify-between text-left"
+                  >
+                    <h3 className="font-semibold text-court-dark">
+                      Week {w.week} <span className="text-sm font-normal text-slate-400">({w.sessions.length} session{w.sessions.length === 1 ? "" : "s"})</span>
+                    </h3>
+                    <span className="text-sm text-court">{isOpen ? "Hide details ▲" : "Full details ▼"}</span>
+                  </button>
+                  <MetricsTable
+                    rows={[{ label: playerId ? "Player" : position ? `${position}s` : "Team", metrics: w.team }]}
+                  />
+                  {!playerId && w.topPerformers.length > 0 && (
+                    <div className="mt-3">
+                      <h4 className="text-sm font-semibold text-slate-500 mb-1">Top Performers</h4>
+                      <ul className="text-sm flex flex-col gap-1">
+                        {w.topPerformers.map((tp) => (
+                          <li key={tp.player.id}>
+                            <a href={`/players/${tp.player.id}`} className="underline">
+                              {tp.player.jerseyNumber != null ? `#${tp.player.jerseyNumber} ` : ""}
+                              {tp.player.firstName} {tp.player.lastName}
+                            </a>{" "}
+                            — {tp.metrics.points} pts
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {isOpen && (
+                    <div className="mt-4 pt-4 border-t flex flex-col gap-4">
+                      {!playerId && w.players.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold text-slate-500 mb-1">Every Player This Week</h4>
+                          <MetricsTable
+                            rows={w.players.map((p) => ({
+                              label: `${p.player.jerseyNumber != null ? `#${p.player.jerseyNumber} ` : ""}${p.player.firstName} ${p.player.lastName}`,
+                              metrics: p.metrics,
+                              href: `/players/${p.player.id}`,
+                            }))}
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="text-sm font-semibold text-slate-500 mb-1">Sessions</h4>
+                        <ul className="text-sm flex flex-col gap-1">
+                          {w.sessions.map((s) => (
+                            <li key={s.sessionId}>
+                              <a href={`/sessions/${s.sessionId}`} className="underline">
+                                {sessionLabel(s.name, s.type, s.opponent)}
+                              </a>{" "}
+                              <span className="text-slate-400">— {new Date(s.date).toLocaleDateString()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </>
       )}

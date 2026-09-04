@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api, assetUrl } from "../lib/api";
 import type { SessionReport, StatEvent } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
 import { SessionRecapCard } from "../components/SessionRecapCard";
+import { SessionSettingsCard } from "../components/SessionSettingsCard";
 
 function playerLabel(event: StatEvent): string {
   if (!event.player) return "";
@@ -13,17 +14,42 @@ function playerLabel(event: StatEvent): string {
 
 export function SessionReviewPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const queryClient = useQueryClient();
   const videoRef = useRef<HTMLVideoElement>(null);
   const markerRefs = useRef(new Map<string, HTMLButtonElement>());
   const [currentTime, setCurrentTime] = useState(0);
   const [activeClipId, setActiveClipId] = useState<string | null>(null);
   // A seek that's waiting on a clip switch to finish loading before it can apply.
   const pendingSeekRef = useRef<number | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "error">("idle");
 
   const { data: report, isLoading } = useQuery({
     queryKey: ["session-report", sessionId],
     queryFn: () => api.get<SessionReport>(`/reports/session/${sessionId}`),
     enabled: !!sessionId,
+  });
+
+  const deleteClip = useMutation({
+    mutationFn: (clipId: string) => api.delete(`/sessions/${sessionId}/video/${clipId}`),
+    onSuccess: () => {
+      setActiveClipId(null);
+      queryClient.invalidateQueries({ queryKey: ["session-report", sessionId] });
+      queryClient.invalidateQueries({ queryKey: ["stats", sessionId] });
+    },
+  });
+
+  const addVideo = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append("video", file);
+      return api.post(`/sessions/${sessionId}/video/manual`, form);
+    },
+    onMutate: () => setUploadStatus("uploading"),
+    onSuccess: () => {
+      setUploadStatus("idle");
+      queryClient.invalidateQueries({ queryKey: ["session-report", sessionId] });
+    },
+    onError: () => setUploadStatus("error"),
   });
 
   const { data: events } = useQuery({
@@ -89,7 +115,8 @@ export function SessionReviewPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-xl font-bold text-court-dark">
-            {session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type} — Review
+            {session.name || (session.type === "MATCH" ? `vs ${session.opponent ?? "Opponent"}` : session.type)} —
+            Review
           </h1>
           <p className="text-sm text-slate-500">{new Date(session.date).toLocaleString()}</p>
         </div>
@@ -98,13 +125,14 @@ export function SessionReviewPage() {
         </Link>
       </div>
 
-      {videos.length > 0 && activeClip && (
-        <div className="bg-white border rounded-xl p-3 flex flex-col gap-3">
-          {videos.length > 1 && (
-            <div className="flex flex-wrap gap-2">
-              {videos.map((clip, i) => (
+      <SessionSettingsCard session={session} />
+
+      <div className="bg-white border rounded-xl p-3 flex flex-col gap-3">
+        {videos.length > 1 && (
+          <div className="flex flex-wrap gap-2">
+            {videos.map((clip, i) => (
+              <span key={clip.id} className="inline-flex items-center gap-1">
                 <button
-                  key={clip.id}
                   onClick={() => {
                     pendingSeekRef.current = null;
                     setActiveClipId(clip.id);
@@ -115,40 +143,88 @@ export function SessionReviewPage() {
                 >
                   Clip {i + 1} — {new Date(clip.startedAt).toLocaleTimeString()}
                 </button>
-              ))}
-            </div>
-          )}
-          <video
-            ref={videoRef}
-            controls
-            playsInline
-            className="w-full max-h-[420px] bg-black rounded-lg"
-            src={assetUrl(activeClip.url!)}
-            onLoadedMetadata={onLoadedMetadata}
-            onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-          />
-          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-            {markers.map((event) => (
-              <button
-                key={event.id}
-                ref={(el) => {
-                  if (el) markerRefs.current.set(event.id, el);
-                  else markerRefs.current.delete(event.id);
-                }}
-                onClick={() => seekTo(event)}
-                className={`tap-target text-xs border rounded-full px-3 py-1 ${
-                  activeMarker?.id === event.id ? "bg-court text-white border-court" : "hover:bg-court hover:text-white"
-                }`}
-              >
-                {Math.floor((event.videoTimestampSec ?? 0) / 60)}:
-                {String(Math.floor((event.videoTimestampSec ?? 0) % 60)).padStart(2, "0")} — {playerLabel(event)}{" "}
-                {event.actionType}/{event.result}
-              </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Delete clip ${i + 1}? Stat taps stay, but lose their video link.`)) {
+                      deleteClip.mutate(clip.id);
+                    }
+                  }}
+                  className="tap-target text-xs text-slate-400 hover:text-red-600 px-1"
+                  aria-label={`Delete clip ${i + 1}`}
+                >
+                  ✕
+                </button>
+              </span>
             ))}
-            {markers.length === 0 && <p className="text-xs text-slate-400">No stat taps were timestamped to this video.</p>}
           </div>
-        </div>
-      )}
+        )}
+
+        {activeClip ? (
+          <>
+            <video
+              ref={videoRef}
+              controls
+              playsInline
+              className="w-full max-h-[420px] bg-black rounded-lg"
+              src={assetUrl(activeClip.url!)}
+              onLoadedMetadata={onLoadedMetadata}
+              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+            />
+            {videos.length === 1 && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => {
+                    if (window.confirm("Delete this video? Stat taps stay, but lose their video link.")) {
+                      deleteClip.mutate(activeClip.id);
+                    }
+                  }}
+                  className="tap-target text-xs text-slate-400 hover:text-red-600"
+                >
+                  Delete video
+                </button>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+              {markers.map((event) => (
+                <button
+                  key={event.id}
+                  ref={(el) => {
+                    if (el) markerRefs.current.set(event.id, el);
+                    else markerRefs.current.delete(event.id);
+                  }}
+                  onClick={() => seekTo(event)}
+                  className={`tap-target text-xs border rounded-full px-3 py-1 ${
+                    activeMarker?.id === event.id ? "bg-court text-white border-court" : "hover:bg-court hover:text-white"
+                  }`}
+                >
+                  {Math.floor((event.videoTimestampSec ?? 0) / 60)}:
+                  {String(Math.floor((event.videoTimestampSec ?? 0) % 60)).padStart(2, "0")} — {playerLabel(event)}{" "}
+                  {event.actionType}/{event.result}
+                </button>
+              ))}
+              {markers.length === 0 && <p className="text-xs text-slate-400">No stat taps were timestamped to this video.</p>}
+            </div>
+          </>
+        ) : (
+          <p className="text-sm text-slate-400">No video for this session yet.</p>
+        )}
+
+        <label className="tap-target self-start text-sm text-court underline cursor-pointer">
+          {uploadStatus === "uploading" ? "Uploading…" : videos.length > 0 ? "Add another video" : "Add video"}
+          <input
+            type="file"
+            accept="video/*"
+            className="hidden"
+            disabled={uploadStatus === "uploading"}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) addVideo.mutate(file);
+            }}
+          />
+        </label>
+        {uploadStatus === "error" && <p className="text-xs text-red-600">Upload failed — try again.</p>}
+      </div>
 
       <SessionRecapCard session={session} />
 

@@ -78,7 +78,8 @@ publicRouter.get("/:shareToken/skills", async (req, res) => {
 
   const playerId = req.query.playerId as string | undefined;
   const position = req.query.position as string | undefined;
+  const sessionId = req.query.sessionId as string | undefined;
 
-  const breakdown = await buildSkillBreakdown(team.id, { playerId, position });
+  const breakdown = await buildSkillBreakdown(team.id, { playerId, position, sessionId });
   res.json({ team: { id: team.id, name: team.name, season: team.season }, ...breakdown });
 });

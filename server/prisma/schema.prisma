@@ -71,6 +71,8 @@ model Session {
   id               String      @id @default(cuid())
   team             Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
   teamId           String
+  /// Optional coach-given label (e.g. "Serve receive focus") shown instead of the generic type/opponent text
+  name             String?
   type             SessionType @default(PRACTICE)
   date             DateTime    @default(now())
   opponent         String?
