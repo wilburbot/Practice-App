@@ -22,8 +22,6 @@ const ROWS: Row[] = [
   { label: "Errors", value: (m) => m.totalErrors },
 ];
 
-const ALL_WEEKS_KEY = "__all_weeks__";
-
 function fmt(value: number | null, isPct?: boolean): string {
   if (value === null) return "—";
   if (isPct) return `${Math.round(value * 100)}%`;
@@ -44,155 +42,261 @@ function Delta({ current, previous, isPct }: { current: number | null; previous:
   );
 }
 
-function avgAction(list: Week[], key: ActionKey) {
-  const n = list.length || 1;
+function avgAction(list: Week[], key: ActionKey, divisor: number) {
   const totalAttempts = list.reduce((s, w) => s + w.team[key].attempts, 0);
   const totalSuccess = list.reduce((s, w) => s + w.team[key].success, 0);
   const totalError = list.reduce((s, w) => s + w.team[key].error, 0);
   return {
-    attempts: totalAttempts / n,
-    success: totalSuccess / n,
-    error: totalError / n,
+    attempts: totalAttempts / divisor,
+    success: totalSuccess / divisor,
+    error: totalError / divisor,
+    // Efficiency is a ratio, so it's identical whether every term is divided by 1 (sum) or n (avg).
     efficiency: totalAttempts > 0 ? (totalSuccess - totalError) / totalAttempts : null,
   };
 }
 
-// Per-week average across every week in `list` (not a sum) so it's on the same scale as a single
-// week's bar -- comparing "Week 36" against the total of five weeks combined would be meaningless.
-function averageTeamMetrics(list: Week[]): PlayerMetrics {
-  const n = list.length || 1;
+// divisor=1 gives the combined total across `list`; divisor=list.length gives the per-week average.
+function combineTeamMetrics(list: Week[], divisor: number): PlayerMetrics {
   const totalPoints = list.reduce((s, w) => s + w.team.points, 0);
   const totalErrors = list.reduce((s, w) => s + w.team.totalErrors, 0);
   const totalAttempts = list.reduce((s, w) => s + w.team.totalAttempts, 0);
   const passRatings = list.map((w) => w.team.avgPassRating).filter((v): v is number => v != null);
 
   return {
-    ATTACK: avgAction(list, "ATTACK"),
-    SERVE: avgAction(list, "SERVE"),
-    RECEPTION: avgAction(list, "RECEPTION"),
-    DIG: avgAction(list, "DIG"),
-    BLOCK: avgAction(list, "BLOCK"),
-    SET: avgAction(list, "SET"),
-    points: totalPoints / n,
-    totalErrors: totalErrors / n,
-    totalAttempts: totalAttempts / n,
+    ATTACK: avgAction(list, "ATTACK", divisor),
+    SERVE: avgAction(list, "SERVE", divisor),
+    RECEPTION: avgAction(list, "RECEPTION", divisor),
+    DIG: avgAction(list, "DIG", divisor),
+    BLOCK: avgAction(list, "BLOCK", divisor),
+    SET: avgAction(list, "SET", divisor),
+    points: totalPoints / divisor,
+    totalErrors: totalErrors / divisor,
+    totalAttempts: totalAttempts / divisor,
     avgPassRating: passRatings.length ? passRatings.reduce((a, b) => a + b, 0) / passRatings.length : null,
   };
 }
 
+type SlotMode = "none" | "single" | "all" | "custom";
+
+interface SlotState {
+  mode: SlotMode;
+  singleWeek: string | null;
+  customWeeks: string[];
+}
+
 interface Bucket {
-  key: string;
   label: string;
-  team: PlayerMetrics;
+  weeks: Week[];
+  sum: PlayerMetrics;
+  avg: PlayerMetrics;
+}
+
+function resolveSlot(sel: SlotState, allWeeks: Week[]): Bucket | null {
+  const list =
+    sel.mode === "all"
+      ? allWeeks
+      : sel.mode === "single"
+        ? allWeeks.filter((w) => w.week === sel.singleWeek)
+        : sel.mode === "custom"
+          ? allWeeks.filter((w) => sel.customWeeks.includes(w.week))
+          : [];
+  if (list.length === 0) return null;
+
+  const label =
+    sel.mode === "all"
+      ? `All Weeks (${allWeeks[0]!.week}–${allWeeks[allWeeks.length - 1]!.week})`
+      : sel.mode === "single"
+        ? `Week ${list[0]!.week}`
+        : list.length === 1
+          ? `Week ${list[0]!.week}`
+          : `${list.length} Weeks (${list.map((w) => w.week).join(", ")})`;
+
+  return { label, weeks: list, sum: combineTeamMetrics(list, 1), avg: combineTeamMetrics(list, list.length) };
+}
+
+function WeekChecklist({
+  weeks,
+  selected,
+  onChange,
+}: {
+  weeks: Week[];
+  selected: string[];
+  onChange: (weeks: string[]) => void;
+}) {
+  return (
+    <div className="border rounded-lg p-2 max-h-36 overflow-y-auto grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+      {[...weeks].reverse().map((w) => (
+        <label key={w.week} className="flex items-center gap-1.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={selected.includes(w.week)}
+            onChange={(e) =>
+              onChange(e.target.checked ? [...selected, w.week] : selected.filter((k) => k !== w.week))
+            }
+          />
+          Week {w.week}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function SlotControl({
+  weeks,
+  slot,
+  setSlot,
+  allowNone,
+}: {
+  weeks: Week[];
+  slot: SlotState;
+  setSlot: (next: SlotState) => void;
+  allowNone: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          className="tap-target border rounded-lg px-2 py-1.5 text-sm"
+          value={slot.mode}
+          onChange={(e) => setSlot({ ...slot, mode: e.target.value as SlotMode })}
+        >
+          {allowNone && <option value="none">None</option>}
+          <option value="single">Single Week</option>
+          <option value="all">All Weeks</option>
+          <option value="custom">Choose Weeks…</option>
+        </select>
+        {slot.mode === "single" && (
+          <select
+            className="tap-target border rounded-lg px-2 py-1.5 text-sm"
+            value={slot.singleWeek ?? ""}
+            onChange={(e) => setSlot({ ...slot, singleWeek: e.target.value })}
+          >
+            {[...weeks].reverse().map((w) => (
+              <option key={w.week} value={w.week}>
+                Week {w.week}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      {slot.mode === "custom" && (
+        <WeekChecklist
+          weeks={weeks}
+          selected={slot.customWeeks}
+          onChange={(customWeeks) => setSlot({ ...slot, customWeeks })}
+        />
+      )}
+    </div>
+  );
 }
 
 export function TeamWeekComparisonCard({ weeks, scopeLabel }: { weeks: Week[]; scopeLabel: string }) {
-  const [weekAKey, setWeekAKey] = useState<string | null>(null);
-  const [weekBKey, setWeekBKey] = useState<string | null | undefined>(undefined); // undefined = default
+  const latest = weeks[weeks.length - 1]?.week ?? null;
+  const previous = weeks.length > 1 ? weeks[weeks.length - 2]!.week : null;
+
+  const [slotA, setSlotA] = useState<SlotState>({ mode: "single", singleWeek: latest, customWeeks: [] });
+  const [slotB, setSlotB] = useState<SlotState>({
+    mode: previous ? "single" : "none",
+    singleWeek: previous,
+    customWeeks: [],
+  });
 
   if (weeks.length < 2) return null;
 
-  const weekA: Bucket = (() => {
-    const found = weekAKey && weeks.find((w) => w.week === weekAKey);
-    const w = found || weeks[weeks.length - 1]!;
-    return { key: w.week, label: `Week ${w.week}`, team: w.team };
-  })();
+  const bucketA = resolveSlot(slotA, weeks);
+  const bucketB = resolveSlot(slotB, weeks);
 
-  const weekB: Bucket | null =
-    weekBKey === undefined
-      ? (() => {
-          const w = weeks[weeks.length - 2]!;
-          return { key: w.week, label: `Week ${w.week}`, team: w.team };
-        })()
-      : weekBKey === null
-        ? null
-        : weekBKey === ALL_WEEKS_KEY
-          ? { key: ALL_WEEKS_KEY, label: `All Weeks (${weeks[0]!.week}–${weeks[weeks.length - 1]!.week} avg)`, team: averageTeamMetrics(weeks) }
-          : (() => {
-              const w = weeks.find((wk) => wk.week === weekBKey);
-              return w ? { key: w.week, label: `Week ${w.week}`, team: w.team } : null;
-            })();
-
-  const chartData = ROWS.filter((row) => !row.isPct).map((row) => ({
-    stat: row.label,
-    [weekA.label]: row.value(weekA.team) ?? 0,
-    ...(weekB ? { [weekB.label]: row.value(weekB.team) ?? 0 } : {}),
-  }));
+  const chartData = bucketA
+    ? ROWS.filter((row) => !row.isPct).map((row) => ({
+        stat: row.label,
+        [bucketA.label]: row.value(bucketA.avg) ?? 0,
+        ...(bucketB ? { [bucketB.label]: row.value(bucketB.avg) ?? 0 } : {}),
+      }))
+    : [];
 
   return (
     <div className="bg-white border rounded-xl p-4">
       <h2 className="font-semibold text-court-dark mb-1">Weekly Comparison</h2>
-      <p className="text-sm text-slate-500 mb-3">Compare any two weeks, or a week against the season average, for {scopeLabel}.</p>
+      <p className="text-sm text-slate-500 mb-3">
+        Compare a week, all weeks, or a custom set of weeks, for {scopeLabel}.
+      </p>
 
-      <div className="flex flex-wrap items-center gap-2 mb-4 text-sm">
-        <span className="font-semibold text-slate-500">Compare</span>
-        <select
-          className="tap-target border rounded-lg px-2 py-1.5"
-          value={weekA.key}
-          onChange={(e) => setWeekAKey(e.target.value)}
-        >
-          {[...weeks].reverse().map((w) => (
-            <option key={w.week} value={w.week}>
-              Week {w.week}
-            </option>
-          ))}
-        </select>
-        <span className="text-slate-400">vs</span>
-        <select
-          className="tap-target border rounded-lg px-2 py-1.5"
-          value={weekB?.key ?? ""}
-          onChange={(e) => setWeekBKey(e.target.value || null)}
-        >
-          <option value="">None</option>
-          <option value={ALL_WEEKS_KEY}>All Weeks (avg)</option>
-          {[...weeks].reverse().map((w) => (
-            <option key={w.week} value={w.week}>
-              Week {w.week}
-            </option>
-          ))}
-        </select>
+      <div className="flex flex-col sm:flex-row gap-4 mb-4">
+        <div className="flex-1">
+          <span className="text-xs font-semibold text-slate-500 block mb-1">A</span>
+          <SlotControl weeks={weeks} slot={slotA} setSlot={setSlotA} allowNone={false} />
+        </div>
+        <div className="flex-1">
+          <span className="text-xs font-semibold text-slate-500 block mb-1">vs B</span>
+          <SlotControl weeks={weeks} slot={slotB} setSlot={setSlotB} allowNone={true} />
+        </div>
       </div>
 
-      <ResponsiveContainer width="100%" height={260}>
-        <BarChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="stat" />
-          <YAxis allowDecimals={false} />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey={weekA.label} fill="#ea580c" />
-          {weekB && <Bar dataKey={weekB.label} fill="#e2e8f0" />}
-        </BarChart>
-      </ResponsiveContainer>
+      {!bucketA && <p className="text-sm text-slate-400">Pick at least one week for A.</p>}
 
-      <div className="overflow-x-auto mt-4">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="text-left text-slate-500 border-b">
-              <th className="py-2 pr-3">Stat</th>
-              <th className="py-2 px-2 text-right">{weekA.label}</th>
-              {weekB && <th className="py-2 pl-2 text-right">vs {weekB.label}</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {ROWS.map((row) => {
-              const current = row.value(weekA.team);
-              const previous = weekB ? row.value(weekB.team) : null;
-              return (
-                <tr key={row.label} className="border-b last:border-0">
-                  <td className="py-2 pr-3 font-medium">{row.label}</td>
-                  <td className="py-2 px-2 text-right">{fmt(current, row.isPct)}</td>
-                  {weekB && (
-                    <td className="py-2 pl-2 text-right">
-                      <Delta current={current} previous={previous} isPct={row.isPct} />
-                    </td>
-                  )}
+      {bucketA && (
+        <>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="stat" />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey={bucketA.label} fill="#ea580c" />
+              {bucketB && <Bar dataKey={bucketB.label} fill="#e2e8f0" />}
+            </BarChart>
+          </ResponsiveContainer>
+
+          <div className="overflow-x-auto mt-4">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="text-left text-slate-500 border-b">
+                  <th className="py-2 pr-3">Stat</th>
+                  <th className="py-2 px-2 text-right">{bucketA.label}</th>
+                  {bucketB && <th className="py-2 pl-2 text-right">vs {bucketB.label}</th>}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {ROWS.map((row) => {
+                  const currentAvg = row.value(bucketA.avg);
+                  const previousAvg = bucketB ? row.value(bucketB.avg) : null;
+                  return (
+                    <tr key={row.label} className="border-b last:border-0">
+                      <td className="py-2 pr-3 font-medium">{row.label}</td>
+                      <td className="py-2 px-2 text-right align-top">
+                        {bucketA.weeks.length > 1 ? (
+                          <div>
+                            <div>Sum {fmt(row.value(bucketA.sum), row.isPct)}</div>
+                            <div className="text-xs text-slate-400">Avg {fmt(currentAvg, row.isPct)}</div>
+                          </div>
+                        ) : (
+                          fmt(currentAvg, row.isPct)
+                        )}
+                      </td>
+                      {bucketB && (
+                        <td className="py-2 pl-2 text-right align-top">
+                          {bucketB.weeks.length > 1 ? (
+                            <div>
+                              <div>Sum {fmt(row.value(bucketB.sum), row.isPct)}</div>
+                              <div className="text-xs text-slate-400 flex justify-end items-center gap-1">
+                                Avg {fmt(previousAvg, row.isPct)}
+                                <Delta current={currentAvg} previous={previousAvg} isPct={row.isPct} />
+                              </div>
+                            </div>
+                          ) : (
+                            <Delta current={currentAvg} previous={previousAvg} isPct={row.isPct} />
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
