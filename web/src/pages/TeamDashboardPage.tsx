@@ -155,6 +155,10 @@ export function TeamDashboardPage() {
           <div className="flex flex-col gap-4">
             {[...weeks].reverse().map((w) => {
               const isOpen = expandedWeek === w.week;
+              // Defensive: tolerates an API response from before `sessions`/`players` existed on
+              // this shape (e.g. mid-deploy skew between frontend and backend).
+              const weekSessions = w.sessions ?? [];
+              const weekPlayers = w.players ?? [];
               return (
                 <div key={w.week} className="bg-white border rounded-xl p-4">
                   <button
@@ -162,7 +166,10 @@ export function TeamDashboardPage() {
                     className="tap-target w-full flex items-center justify-between text-left"
                   >
                     <h3 className="font-semibold text-court-dark">
-                      Week {w.week} <span className="text-sm font-normal text-slate-400">({w.sessions.length} session{w.sessions.length === 1 ? "" : "s"})</span>
+                      Week {w.week}{" "}
+                      <span className="text-sm font-normal text-slate-400">
+                        ({weekSessions.length} session{weekSessions.length === 1 ? "" : "s"})
+                      </span>
                     </h3>
                     <span className="text-sm text-court">{isOpen ? "Hide details ▲" : "Full details ▼"}</span>
                   </button>
@@ -188,11 +195,11 @@ export function TeamDashboardPage() {
 
                   {isOpen && (
                     <div className="mt-4 pt-4 border-t flex flex-col gap-4">
-                      {!playerId && w.players.length > 0 && (
+                      {!playerId && weekPlayers.length > 0 && (
                         <div>
                           <h4 className="text-sm font-semibold text-slate-500 mb-1">Every Player This Week</h4>
                           <MetricsTable
-                            rows={w.players.map((p) => ({
+                            rows={weekPlayers.map((p) => ({
                               label: `${p.player.jerseyNumber != null ? `#${p.player.jerseyNumber} ` : ""}${p.player.firstName} ${p.player.lastName}`,
                               metrics: p.metrics,
                               href: `/players/${p.player.id}`,
@@ -203,7 +210,7 @@ export function TeamDashboardPage() {
                       <div>
                         <h4 className="text-sm font-semibold text-slate-500 mb-1">Sessions</h4>
                         <ul className="text-sm flex flex-col gap-1">
-                          {w.sessions.map((s) => (
+                          {weekSessions.map((s) => (
                             <li key={s.sessionId}>
                               <a href={`/sessions/${s.sessionId}`} className="underline">
                                 {sessionLabel(s.name, s.type, s.opponent)}
