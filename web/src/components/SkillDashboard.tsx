@@ -49,7 +49,7 @@ function SkillCard({ skill }: { skill: SkillBreakdownEntry }) {
   // to avoid overlap.
   const barChartHeight = Math.max(180, barData.length * 32);
 
-  const trendData = skill.trend.map((t) => ({
+  const trendData = (skill.trend ?? []).map((t) => ({
     week: t.week.replace(/^\d{4}-/, ""),
     [labels.success]: t.success,
     [labels.error]: t.error,
