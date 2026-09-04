@@ -76,11 +76,11 @@ function combineTeamMetrics(list: Week[], divisor: number): PlayerMetrics {
   };
 }
 
-type SlotMode = "none" | "single" | "all" | "custom";
+// Only two modes: "All Weeks" or "Choose Weeks" -- a single week is just a one-box checklist pick.
+type SlotMode = "all" | "custom";
 
 interface SlotState {
   mode: SlotMode;
-  singleWeek: string | null;
   customWeeks: string[];
 }
 
@@ -92,24 +92,15 @@ interface Bucket {
 }
 
 function resolveSlot(sel: SlotState, allWeeks: Week[]): Bucket | null {
-  const list =
-    sel.mode === "all"
-      ? allWeeks
-      : sel.mode === "single"
-        ? allWeeks.filter((w) => w.week === sel.singleWeek)
-        : sel.mode === "custom"
-          ? allWeeks.filter((w) => sel.customWeeks.includes(w.week))
-          : [];
+  const list = sel.mode === "all" ? allWeeks : allWeeks.filter((w) => sel.customWeeks.includes(w.week));
   if (list.length === 0) return null;
 
   const label =
     sel.mode === "all"
       ? `All Weeks (${allWeeks[0]!.week}–${allWeeks[allWeeks.length - 1]!.week})`
-      : sel.mode === "single"
+      : list.length === 1
         ? `Week ${list[0]!.week}`
-        : list.length === 1
-          ? `Week ${list[0]!.week}`
-          : `${list.length} Weeks (${list.map((w) => w.week).join(", ")})`;
+        : `${list.length} Weeks (${list.map((w) => w.week).join(", ")})`;
 
   return { label, weeks: list, sum: combineTeamMetrics(list, 1), avg: combineTeamMetrics(list, list.length) };
 }
@@ -145,40 +136,21 @@ function SlotControl({
   weeks,
   slot,
   setSlot,
-  allowNone,
 }: {
   weeks: Week[];
   slot: SlotState;
   setSlot: (next: SlotState) => void;
-  allowNone: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          className="tap-target border rounded-lg px-2 py-1.5 text-sm"
-          value={slot.mode}
-          onChange={(e) => setSlot({ ...slot, mode: e.target.value as SlotMode })}
-        >
-          {allowNone && <option value="none">None</option>}
-          <option value="single">Single Week</option>
-          <option value="all">All Weeks</option>
-          <option value="custom">Choose Weeks…</option>
-        </select>
-        {slot.mode === "single" && (
-          <select
-            className="tap-target border rounded-lg px-2 py-1.5 text-sm"
-            value={slot.singleWeek ?? ""}
-            onChange={(e) => setSlot({ ...slot, singleWeek: e.target.value })}
-          >
-            {[...weeks].reverse().map((w) => (
-              <option key={w.week} value={w.week}>
-                Week {w.week}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
+      <select
+        className="tap-target border rounded-lg px-2 py-1.5 text-sm"
+        value={slot.mode}
+        onChange={(e) => setSlot({ ...slot, mode: e.target.value as SlotMode })}
+      >
+        <option value="all">All Weeks</option>
+        <option value="custom">Choose Weeks…</option>
+      </select>
       {slot.mode === "custom" && (
         <WeekChecklist
           weeks={weeks}
@@ -190,21 +162,30 @@ function SlotControl({
   );
 }
 
+// A single stat's centered tile when there's no B to compare against (just "All Weeks" for A).
+function StatTile({ row, bucket }: { row: Row; bucket: Bucket }) {
+  const isMulti = bucket.weeks.length > 1;
+  return (
+    <div className="text-center">
+      <p className="text-xs font-semibold text-slate-500">{row.label}</p>
+      <p className="text-lg font-bold text-court-dark">{fmt(row.value(isMulti ? bucket.sum : bucket.avg), row.isPct)}</p>
+      {isMulti && <p className="text-xs text-slate-400">avg {fmt(row.value(bucket.avg), row.isPct)}</p>}
+    </div>
+  );
+}
+
 export function TeamWeekComparisonCard({ weeks, scopeLabel }: { weeks: Week[]; scopeLabel: string }) {
   const latest = weeks[weeks.length - 1]?.week ?? null;
   const previous = weeks.length > 1 ? weeks[weeks.length - 2]!.week : null;
 
-  const [slotA, setSlotA] = useState<SlotState>({ mode: "single", singleWeek: latest, customWeeks: [] });
-  const [slotB, setSlotB] = useState<SlotState>({
-    mode: previous ? "single" : "none",
-    singleWeek: previous,
-    customWeeks: [],
-  });
+  const [slotA, setSlotA] = useState<SlotState>({ mode: "custom", customWeeks: latest ? [latest] : [] });
+  const [slotB, setSlotB] = useState<SlotState>({ mode: "custom", customWeeks: previous ? [previous] : [] });
 
   if (weeks.length < 2) return null;
 
   const bucketA = resolveSlot(slotA, weeks);
-  const bucketB = resolveSlot(slotB, weeks);
+  // B only exists when A is a specific week/weeks selection, never alongside "All Weeks" in A.
+  const bucketB = slotA.mode === "custom" ? resolveSlot(slotB, weeks) : null;
 
   const chartData = bucketA
     ? ROWS.filter((row) => !row.isPct).map((row) => ({
@@ -218,18 +199,22 @@ export function TeamWeekComparisonCard({ weeks, scopeLabel }: { weeks: Week[]; s
     <div className="bg-white border rounded-xl p-4">
       <h2 className="font-semibold text-court-dark mb-1">Weekly Comparison</h2>
       <p className="text-sm text-slate-500 mb-3">
-        Compare a week, all weeks, or a custom set of weeks, for {scopeLabel}.
+        {slotA.mode === "all"
+          ? `Season-wide breakdown for ${scopeLabel}.`
+          : `Comparing chosen weeks against B, for ${scopeLabel}.`}
       </p>
 
       <div className="flex flex-col sm:flex-row gap-4 mb-4">
         <div className="flex-1">
           <span className="text-xs font-semibold text-slate-500 block mb-1">A</span>
-          <SlotControl weeks={weeks} slot={slotA} setSlot={setSlotA} allowNone={false} />
+          <SlotControl weeks={weeks} slot={slotA} setSlot={setSlotA} />
         </div>
-        <div className="flex-1">
-          <span className="text-xs font-semibold text-slate-500 block mb-1">vs B</span>
-          <SlotControl weeks={weeks} slot={slotB} setSlot={setSlotB} allowNone={true} />
-        </div>
+        {slotA.mode === "custom" && (
+          <div className="flex-1">
+            <span className="text-xs font-semibold text-slate-500 block mb-1">vs B</span>
+            <SlotControl weeks={weeks} slot={slotB} setSlot={setSlotB} />
+          </div>
+        )}
       </div>
 
       {!bucketA && <p className="text-sm text-slate-400">Pick at least one week for A.</p>}
@@ -248,53 +233,42 @@ export function TeamWeekComparisonCard({ weeks, scopeLabel }: { weeks: Week[]; s
             </BarChart>
           </ResponsiveContainer>
 
-          <div className="overflow-x-auto mt-4">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="text-left text-slate-500 border-b">
-                  <th className="py-2 pr-3">Stat</th>
-                  <th className="py-2 px-2 text-right">{bucketA.label}</th>
-                  {bucketB && <th className="py-2 pl-2 text-right">vs {bucketB.label}</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {ROWS.map((row) => {
-                  const currentAvg = row.value(bucketA.avg);
-                  const previousAvg = bucketB ? row.value(bucketB.avg) : null;
-                  return (
-                    <tr key={row.label} className="border-b last:border-0">
-                      <td className="py-2 pr-3 font-medium">{row.label}</td>
-                      <td className="py-2 px-2 text-right align-top">
-                        {bucketA.weeks.length > 1 ? (
-                          <div>
-                            <div>Sum {fmt(row.value(bucketA.sum), row.isPct)}</div>
-                            <div className="text-xs text-slate-400">Avg {fmt(currentAvg, row.isPct)}</div>
-                          </div>
-                        ) : (
-                          fmt(currentAvg, row.isPct)
-                        )}
-                      </td>
-                      {bucketB && (
-                        <td className="py-2 pl-2 text-right align-top">
-                          {bucketB.weeks.length > 1 ? (
-                            <div>
-                              <div>Sum {fmt(row.value(bucketB.sum), row.isPct)}</div>
-                              <div className="text-xs text-slate-400 flex justify-end items-center gap-1">
-                                Avg {fmt(previousAvg, row.isPct)}
-                                <Delta current={currentAvg} previous={previousAvg} isPct={row.isPct} />
-                              </div>
-                            </div>
-                          ) : (
-                            <Delta current={currentAvg} previous={previousAvg} isPct={row.isPct} />
-                          )}
+          {bucketB ? (
+            <div className="overflow-x-auto mt-4">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="text-left text-slate-500 border-b">
+                    <th className="py-2 pr-3">Stat</th>
+                    <th className="py-2 px-2 text-right">{bucketA.label}</th>
+                    <th className="py-2 pl-2 text-right">vs {bucketB.label}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ROWS.map((row) => {
+                    const currentAvg = row.value(bucketA.avg);
+                    const previousAvg = row.value(bucketB.avg);
+                    return (
+                      <tr key={row.label} className="border-b last:border-0">
+                        <td className="py-2 pr-3 font-medium">{row.label}</td>
+                        <td className="py-2 px-2 text-right">{fmt(currentAvg, row.isPct)}</td>
+                        <td className="py-2 pl-2 text-right">
+                          <Delta current={currentAvg} previous={previousAvg} isPct={row.isPct} />
                         </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="mt-4 flex justify-center">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 max-w-2xl">
+                {ROWS.map((row) => (
+                  <StatTile key={row.label} row={row} bucket={bucketA} />
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
