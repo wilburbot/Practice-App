@@ -74,20 +74,20 @@ export function SessionsPage() {
           <option value="SCRIMMAGE">Scrimmage</option>
         </select>
         <input
-          className="tap-target border rounded-lg px-3 py-2 flex-1 min-w-[140px]"
+          className="tap-target border rounded-lg px-3 py-2 w-44 shrink-0"
           placeholder="Name (optional)"
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
         <input
-          className="tap-target border rounded-lg px-3 py-2"
+          className="tap-target border rounded-lg px-3 py-2 w-40 shrink-0"
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
         {type === "MATCH" && (
           <input
-            className="tap-target border rounded-lg px-3 py-2 flex-1 min-w-[160px]"
+            className="tap-target border rounded-lg px-3 py-2 w-44 shrink-0"
             placeholder="Opponent"
             value={opponent}
             onChange={(e) => setOpponent(e.target.value)}
