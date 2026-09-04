@@ -207,7 +207,7 @@ export async function buildSkillBreakdown(
       ...(filters.playerId ? { playerId: filters.playerId } : {}),
       ...(filters.position ? { player: { position: filters.position } } : {}),
     },
-    include: { player: true },
+    include: { player: true, session: true },
   });
 
   const skills = ACTION_TYPES.map((actionType) => {
@@ -249,7 +249,24 @@ export async function buildSkillBreakdown(
       }))
       .sort((a, b) => b.success - a.success);
 
-    return { actionType, attempts: skillEvents.length, resultBreakdown, byPlayer };
+    // Weekly trend for this skill, so the line chart shows whether it's improving over the season.
+    const byWeekMap = new Map<string, typeof skillEvents>();
+    for (const event of skillEvents) {
+      const key = isoWeekKey(event.session.date);
+      const bucket = byWeekMap.get(key) ?? [];
+      bucket.push(event);
+      byWeekMap.set(key, bucket);
+    }
+    const trend = [...byWeekMap.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([week, weekEvents]) => {
+        const success = weekEvents.filter((e) => e.result === "SUCCESS").length;
+        const error = weekEvents.filter((e) => e.result === "ERROR").length;
+        const attempts = weekEvents.length;
+        return { week, success, error, attempts, efficiency: attempts > 0 ? (success - error) / attempts : null };
+      });
+
+    return { actionType, attempts: skillEvents.length, resultBreakdown, byPlayer, trend };
   });
 
   return { skills };

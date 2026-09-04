@@ -1,4 +1,18 @@
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import type { ActionType, SkillBreakdownEntry } from "../lib/types";
 
 const SKILL_LABELS: Record<ActionType, { title: string; success: string; error: string; attempt: string }> = {
@@ -34,6 +48,12 @@ function SkillCard({ skill }: { skill: SkillBreakdownEntry }) {
   // Tall enough for every bar to get its own row so Recharts never has to drop alternating labels
   // to avoid overlap.
   const barChartHeight = Math.max(180, barData.length * 32);
+
+  const trendData = skill.trend.map((t) => ({
+    week: t.week.replace(/^\d{4}-/, ""),
+    [labels.success]: t.success,
+    [labels.error]: t.error,
+  }));
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-4">
@@ -81,6 +101,23 @@ function SkillCard({ skill }: { skill: SkillBreakdownEntry }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          {trendData.length > 0 && (
+            <div className="sm:col-span-2">
+              <p className="text-xs font-semibold text-slate-500 mb-1">Weekly Trend</p>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} width={30} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey={labels.success} stroke={RESULT_COLORS.SUCCESS} strokeWidth={2} />
+                  <Line type="monotone" dataKey={labels.error} stroke={RESULT_COLORS.ERROR} strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
 
           <div className="sm:col-span-2 overflow-x-auto">
             <p className="text-xs font-semibold text-slate-500 mb-1">By Player</p>

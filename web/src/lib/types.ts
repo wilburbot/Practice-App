@@ -203,11 +203,20 @@ export interface SkillPlayerStat {
   avgPassRating: number | null;
 }
 
+export interface SkillWeekTrendPoint {
+  week: string;
+  success: number;
+  error: number;
+  attempts: number;
+  efficiency: number | null;
+}
+
 export interface SkillBreakdownEntry {
   actionType: ActionType;
   attempts: number;
   resultBreakdown: SkillResultBreakdown;
   byPlayer: SkillPlayerStat[];
+  trend: SkillWeekTrendPoint[];
 }
 
 export interface TeamSkillBreakdown {
