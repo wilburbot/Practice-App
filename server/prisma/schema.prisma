@@ -149,6 +149,9 @@ model StatEvent {
   videoClip          SessionVideo? @relation(fields: [videoClipId], references: [id], onDelete: SetNull)
   videoClipId        String?
   videoTimestampSec  Float?
+  /// Short (~30s) extracted clip around this tap's moment, generated after the source video finishes
+  /// uploading — lets the highlight reel play a small file instead of seeking inside the full recording
+  highlightUrl       String?
   /// Normalized 0-1 target location on the opponent's court, only set for ATTACK/SERVE, for tendency charts
   targetX            Float?
   targetY            Float?

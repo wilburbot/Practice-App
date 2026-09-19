@@ -98,6 +98,9 @@ export async function buildPlayerProgress(player: Player) {
     .map((e) => ({
       sessionId: e.sessionId,
       videoUrl: e.videoClip!.url!,
+      // Short (~30s) clip generated server-side around this moment, once ffmpeg has processed it —
+      // null until then, or if extraction failed, in which case the reel falls back to the full video.
+      highlightUrl: e.highlightUrl,
       timestampSec: e.videoTimestampSec!,
       actionType: e.actionType,
       result: e.result,

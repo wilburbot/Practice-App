@@ -23,6 +23,11 @@ export function HighlightReelCard({ clips }: { clips: HighlightClip[] }) {
 
   const filtered = mode === "highlights" ? clips.filter((c) => c.result === "SUCCESS") : clips;
   const clip = filtered[index];
+  // A highlightUrl clip is already a short (~30s) extract centered on the moment — play it from
+  // the start with no seeking needed. Only fall back to seeking within the full recording (heavier
+  // to load, especially for a long practice video) when no snippet has been generated yet.
+  const isSnippet = !!clip?.highlightUrl;
+  const clipSrc = clip?.highlightUrl ?? clip?.videoUrl ?? null;
 
   // Clamp index when the filter changes and shrinks the list.
   useEffect(() => {
@@ -32,9 +37,9 @@ export function HighlightReelCard({ clips }: { clips: HighlightClip[] }) {
 
   useEffect(() => {
     const videoEl = videoRef.current;
-    if (!videoEl || !clip) return;
-    const url = assetUrl(clip.videoUrl);
-    const start = Math.max(0, clip.timestampSec - PRE_ROLL_SEC);
+    if (!videoEl || !clip || !clipSrc) return;
+    const url = assetUrl(clipSrc);
+    const start = isSnippet ? 0 : Math.max(0, clip.timestampSec - PRE_ROLL_SEC);
 
     if (loadedUrlRef.current !== url) {
       loadedUrlRef.current = url;
@@ -50,9 +55,10 @@ export function HighlightReelCard({ clips }: { clips: HighlightClip[] }) {
       if (isPlaying) videoEl.play().catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clip?.sessionId, clip?.timestampSec]);
+  }, [clip?.sessionId, clip?.timestampSec, clipSrc]);
 
   const onTimeUpdate = () => {
+    if (isSnippet) return; // short snippet just plays out naturally and advances via onEnded
     const videoEl = videoRef.current;
     if (!videoEl || !clip) return;
     if (videoEl.currentTime >= clip.timestampSec + POST_ROLL_SEC) {

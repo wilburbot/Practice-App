@@ -41,7 +41,14 @@ export function useCamera() {
     if (!streamRef.current) return;
     chunksRef.current = [];
     const mimeType = pickMimeType();
-    const recorder = new MediaRecorder(streamRef.current, mimeType ? { mimeType } : undefined);
+    // Browsers often default to a much higher bitrate than a courtside review video needs (well
+    // over 8 Mbps at 1080p) — capping it keeps long recordings from turning into multi-GB files
+    // that lag or fail to upload, without hurting the ability to see plays clearly.
+    const recorder = new MediaRecorder(streamRef.current, {
+      ...(mimeType ? { mimeType } : undefined),
+      videoBitsPerSecond: 2_000_000,
+      audioBitsPerSecond: 96_000,
+    });
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };

@@ -21,7 +21,9 @@ export class ApiError extends Error {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = { ...(options.headers as Record<string, string>) };
-  if (!(options.body instanceof FormData)) {
+  // FormData/Blob bodies set their own Content-Type (or need a caller-supplied one, e.g. a raw
+  // video chunk) — only JSON bodies get the default applied here.
+  if (!(options.body instanceof FormData) && !(options.body instanceof Blob)) {
     headers["Content-Type"] = "application/json";
   }
   if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -46,6 +48,9 @@ export const api = {
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  /** POSTs a raw binary body (e.g. one chunk of a large video upload) with an explicit content type. */
+  postBinary: <T>(path: string, body: Blob) =>
+    request<T>(path, { method: "POST", body, headers: { "Content-Type": "application/octet-stream" } }),
 };
 
 export function assetUrl(path: string): string {

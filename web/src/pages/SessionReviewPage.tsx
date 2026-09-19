@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api, assetUrl } from "../lib/api";
+import { readVideoDuration, uploadVideoChunked } from "../lib/uploadVideo";
 import type { SessionReport, StatEvent } from "../lib/types";
 import { MetricsTable } from "../components/MetricsTable";
 import { SessionRecapCard } from "../components/SessionRecapCard";
@@ -22,6 +23,8 @@ export function SessionReviewPage() {
   // A seek that's waiting on a clip switch to finish loading before it can apply.
   const pendingSeekRef = useRef<number | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "error">("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const pendingFileRef = useRef<File | null>(null);
 
   const { data: report, isLoading } = useQuery({
     queryKey: ["session-report", sessionId],
@@ -39,18 +42,29 @@ export function SessionReviewPage() {
   });
 
   const addVideo = useMutation({
-    mutationFn: (file: File) => {
-      const form = new FormData();
-      form.append("video", file);
-      return api.post(`/sessions/${sessionId}/video/manual`, form);
+    mutationFn: async (file: File) => {
+      pendingFileRef.current = file;
+      setUploadProgress(0);
+      const durationSec = await readVideoDuration(file);
+      return uploadVideoChunked({
+        sessionId: sessionId!,
+        blob: file,
+        durationSec,
+        onProgress: setUploadProgress,
+      });
     },
     onMutate: () => setUploadStatus("uploading"),
     onSuccess: () => {
       setUploadStatus("idle");
+      pendingFileRef.current = null;
       queryClient.invalidateQueries({ queryKey: ["session-report", sessionId] });
     },
     onError: () => setUploadStatus("error"),
   });
+
+  const onRetryUpload = () => {
+    if (pendingFileRef.current) addVideo.mutate(pendingFileRef.current);
+  };
 
   const { data: events } = useQuery({
     queryKey: ["stats", sessionId],
@@ -210,7 +224,11 @@ export function SessionReviewPage() {
         )}
 
         <label className="tap-target self-start text-sm text-court underline cursor-pointer">
-          {uploadStatus === "uploading" ? "Uploading…" : videos.length > 0 ? "Add another video" : "Add video"}
+          {uploadStatus === "uploading"
+            ? `Uploading… ${Math.round(uploadProgress * 100)}%`
+            : videos.length > 0
+              ? "Add another video"
+              : "Add video"}
           <input
             type="file"
             accept="video/*"
@@ -223,7 +241,19 @@ export function SessionReviewPage() {
             }}
           />
         </label>
-        {uploadStatus === "error" && <p className="text-xs text-red-600">Upload failed — try again.</p>}
+        {uploadStatus === "uploading" && (
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-court transition-[width]" style={{ width: `${Math.round(uploadProgress * 100)}%` }} />
+          </div>
+        )}
+        {uploadStatus === "error" && (
+          <p className="text-xs text-red-600 flex items-center gap-2">
+            Upload failed
+            <button onClick={onRetryUpload} className="tap-target underline">
+              Retry
+            </button>
+          </p>
+        )}
       </div>
 
       <SessionRecapCard session={session} />

@@ -151,6 +151,8 @@ export interface SessionReport {
 export interface HighlightClip {
   sessionId: string;
   videoUrl: string;
+  /** Short (~30s) server-extracted clip around this moment; null until processed or if extraction failed. */
+  highlightUrl: string | null;
   timestampSec: number;
   actionType: ActionType;
   result: ActionResult;

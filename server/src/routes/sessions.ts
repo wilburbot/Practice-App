@@ -1,14 +1,16 @@
-import { Router } from "express";
+import { Router, raw } from "express";
 import multer from "multer";
 import path from "node:path";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
+import fsSync from "node:fs";
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { requireAuth, type AuthedRequest } from "../middleware/auth.js";
 import { findOwnedSession, findOwnedTeam } from "../lib/ownership.js";
 import { askClaude, handleLLMError } from "../lib/llm.js";
 import { buildSessionReport } from "../lib/reportQueries.js";
+import { generateHighlightsForClip } from "../lib/highlights.js";
 import type { Session } from "@prisma/client";
 
 export const sessionsRouter = Router();
@@ -223,6 +225,8 @@ sessionsRouter.post(
       await prisma.session.update({ where: { id: session.id }, data: { activeVideoClipId: null } });
     }
 
+    generateHighlightsForClip(clip.id).catch((err) => console.error("Highlight generation failed:", err));
+
     const updated = await prisma.session.findUniqueOrThrow({ where: { id: session.id } });
     res.status(201).json(await serializeSession(updated));
   },
@@ -250,6 +254,109 @@ sessionsRouter.post(
     res.status(201).json(await serializeSession(session));
   },
 );
+
+const CHUNKS_DIR = path.join(UPLOAD_DIR, ".chunks");
+const UPLOAD_ID_RE = /^[a-zA-Z0-9_-]{1,100}$/;
+
+function chunkDir(sessionId: string, uploadId: string): string {
+  return path.join(CHUNKS_DIR, `${sessionId}-${uploadId}`);
+}
+
+// One piece of a large video, uploaded as a raw request body instead of multipart — long practice
+// recordings can be hundreds of MB, and a single giant POST is exactly what tends to lag or drop on
+// courtside wifi/cellular. Splitting it lets the client retry just the failed piece instead of the
+// whole file, and lets us show real upload progress.
+sessionsRouter.post(
+  "/:sessionId/video/chunk/:uploadId/:index",
+  raw({ type: "*/*", limit: "8mb" }),
+  async (req: AuthedRequest, res) => {
+    const session = await findOwnedSession(req.params.sessionId, req.userId!);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const { uploadId, index } = req.params;
+    if (!UPLOAD_ID_RE.test(uploadId)) return res.status(400).json({ error: "Invalid uploadId" });
+    const idx = Number(index);
+    if (!Number.isInteger(idx) || idx < 0) return res.status(400).json({ error: "Invalid chunk index" });
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(400).json({ error: "Empty chunk body" });
+    }
+
+    const dir = chunkDir(session.id, uploadId);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, String(idx)), req.body);
+    res.status(204).end();
+  },
+);
+
+const chunkCompleteSchema = z.object({
+  uploadId: z.string().regex(UPLOAD_ID_RE),
+  totalChunks: z.number().int().min(1),
+  ext: z
+    .string()
+    .regex(/^[a-zA-Z0-9]{1,10}$/)
+    .default("webm"),
+  durationSec: z.number().optional().nullable(),
+  // Present when finalizing a live-recording clip started via /recording/start; absent for a
+  // manually added video, which creates its own new clip instead.
+  clipId: z.string().optional().nullable(),
+});
+
+// Reassembles a chunked upload into the final file, then finalizes it exactly like the single-shot
+// upload routes below (attach to an existing clip, or create a new one for a manual add).
+sessionsRouter.post("/:sessionId/video/chunk/complete", async (req: AuthedRequest, res) => {
+  const session = await findOwnedSession(req.params.sessionId, req.userId!);
+  if (!session) return res.status(404).json({ error: "Session not found" });
+
+  const parsed = chunkCompleteSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
+  }
+  const { uploadId, totalChunks, ext, durationSec, clipId } = parsed.data;
+
+  const dir = chunkDir(session.id, uploadId);
+  const finalFilename = `${crypto.randomUUID()}.${ext}`;
+  const finalPath = path.join(UPLOAD_DIR, finalFilename);
+
+  try {
+    const writeStream = fsSync.createWriteStream(finalPath);
+    for (let i = 0; i < totalChunks; i++) {
+      const data = await fs.readFile(path.join(dir, String(i)));
+      if (!writeStream.write(data)) {
+        await new Promise<void>((resolve) => writeStream.once("drain", () => resolve()));
+      }
+    }
+    await new Promise<void>((resolve, reject) => {
+      writeStream.end((err?: Error | null) => (err ? reject(err) : resolve()));
+    });
+  } catch {
+    await fs.unlink(finalPath).catch(() => {});
+    return res.status(400).json({ error: "Upload incomplete — one or more parts are missing. Please retry." });
+  }
+  await fs.rm(dir, { recursive: true, force: true }).catch(() => {});
+
+  if (clipId) {
+    const clip = await prisma.sessionVideo.findFirst({ where: { id: clipId, sessionId: session.id } });
+    if (!clip) {
+      await fs.unlink(finalPath).catch(() => {});
+      return res.status(404).json({ error: "Recording clip not found — start a new recording and try again." });
+    }
+    await prisma.sessionVideo.update({
+      where: { id: clip.id },
+      data: { url: `/uploads/${finalFilename}`, durationSec: durationSec ?? undefined },
+    });
+    if (session.activeVideoClipId === clip.id) {
+      await prisma.session.update({ where: { id: session.id }, data: { activeVideoClipId: null } });
+    }
+    generateHighlightsForClip(clip.id).catch((err) => console.error("Highlight generation failed:", err));
+  } else {
+    await prisma.sessionVideo.create({
+      data: { sessionId: session.id, url: `/uploads/${finalFilename}`, durationSec: durationSec ?? undefined },
+    });
+  }
+
+  const updated = await prisma.session.findUniqueOrThrow({ where: { id: session.id } });
+  res.status(201).json(await serializeSession(updated));
+});
 
 // Removes one video clip (and its file). Stat taps that were linked to it keep their timestamp but
 // lose the video reference (onDelete: SetNull), same as if that clip never had a file uploaded.

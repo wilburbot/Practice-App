@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { uploadVideoChunked } from "../lib/uploadVideo";
 import type { Player, ServingTeam, Session, StatEvent } from "../lib/types";
 import { ACTION_GROUPS, type ActionButton } from "../lib/actions";
 import { useCamera } from "../hooks/useCamera";
@@ -15,6 +16,9 @@ export function LiveTrackingPage() {
   const camera = useCamera();
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  // Kept around so a failed upload can be retried without re-recording.
+  const pendingUploadRef = useRef<{ blob: Blob; durationSec: number } | null>(null);
   const [currentSet, setCurrentSet] = useState(1);
   const [servingTeam, setServingTeam] = useState<ServingTeam>("OWN");
   const [pickerEventId, setPickerEventId] = useState<string | null>(null);
@@ -86,21 +90,29 @@ export function LiveTrackingPage() {
   const uploadVideo = useMutation({
     mutationFn: async ({ blob, durationSec }: { blob: Blob; durationSec: number }) => {
       if (!localClipId) throw new Error("No active recording clip to attach this video to");
-      const form = new FormData();
-      const ext = blob.type.includes("mp4") ? "mp4" : "webm";
-      form.append("video", blob, `session-${sessionId}.${ext}`);
-      form.append("durationSec", String(durationSec));
-      form.append("clipId", localClipId);
-      return api.post<Session>(`/sessions/${sessionId}/video`, form);
+      pendingUploadRef.current = { blob, durationSec };
+      setUploadProgress(0);
+      return uploadVideoChunked({
+        sessionId: sessionId!,
+        blob,
+        durationSec,
+        clipId: localClipId,
+        onProgress: setUploadProgress,
+      });
     },
     onMutate: () => setUploadStatus("uploading"),
     onSuccess: () => {
       setUploadStatus("done");
       setLocalClipId(null);
+      pendingUploadRef.current = null;
       queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
     },
     onError: () => setUploadStatus("error"),
   });
+
+  const onRetryUpload = () => {
+    if (pendingUploadRef.current) uploadVideo.mutate(pendingUploadRef.current);
+  };
 
   const markRecordingStarted = useMutation({
     mutationFn: () => api.post<Session>(`/sessions/${sessionId}/recording/start`),
@@ -203,10 +215,27 @@ export function LiveTrackingPage() {
                 </button>
               )}
               {camera.isRecording && <span className="text-sm text-red-600 font-medium animate-pulse">Recording…</span>}
-              {uploadStatus === "uploading" && <span className="text-sm text-slate-500">Uploading video…</span>}
+              {uploadStatus === "uploading" && (
+                <span className="text-sm text-slate-500">Uploading video… {Math.round(uploadProgress * 100)}%</span>
+              )}
               {uploadStatus === "done" && <span className="text-sm text-emerald-600">Video saved ✓</span>}
-              {uploadStatus === "error" && <span className="text-sm text-red-600">Video upload failed</span>}
+              {uploadStatus === "error" && (
+                <span className="text-sm text-red-600 flex items-center gap-2">
+                  Video upload failed
+                  <button onClick={onRetryUpload} className="tap-target underline">
+                    Retry
+                  </button>
+                </span>
+              )}
             </div>
+            {uploadStatus === "uploading" && (
+              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-court transition-[width]"
+                  style={{ width: `${Math.round(uploadProgress * 100)}%` }}
+                />
+              </div>
+            )}
             <p className="text-xs text-slate-400">
               Recording is optional — stats can be logged with or without video. Each tap is timestamped against
               the recording so you can jump straight to the play later. If other coaches are tracking this same
