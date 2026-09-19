@@ -17,12 +17,12 @@ function ratio(success: number, attempts: number): number | null {
 
 const ROWS: Row[] = [
   { label: "Kills", value: (m) => m.ATTACK.success },
-  { label: "Att", value: (m) => m.ATTACK.attempts },
+  { label: "Total Att", value: (m) => m.ATTACK.attempts },
   { label: "Attack Eff", value: (m) => m.ATTACK.efficiency, isPct: true },
   { label: "Aces", value: (m) => m.SERVE.success },
-  { label: "Good Rec%", value: (m) => m.goodReceivePct, isPct: true },
-  { label: "Rec Total", value: (m) => m.RECEPTION.attempts },
-  { label: "Rec Err%", value: (m) => ratio(m.RECEPTION.error, m.RECEPTION.attempts), isPct: true },
+  { label: "Good Rec %", value: (m) => m.goodReceivePct, isPct: true },
+  { label: "Rec Err %", value: (m) => ratio(m.RECEPTION.error, m.RECEPTION.attempts), isPct: true },
+  { label: "Total Rec.", value: (m) => m.RECEPTION.attempts },
   { label: "Digs", value: (m) => m.DIG.success },
   { label: "Blocks", value: (m) => m.BLOCK.success },
   { label: "Assists", value: (m) => m.SET.success },

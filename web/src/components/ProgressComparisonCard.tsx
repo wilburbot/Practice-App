@@ -15,23 +15,23 @@ function ratio(success: number, attempts: number): number | null {
 
 const ROWS: Row[] = [
   { label: "Kills", value: (m) => m.ATTACK.success, seasonValue: (o, n) => o.ATTACK.success / n },
-  { label: "Att", value: (m) => m.ATTACK.attempts, seasonValue: (o, n) => o.ATTACK.attempts / n },
+  { label: "Total Att", value: (m) => m.ATTACK.attempts, seasonValue: (o, n) => o.ATTACK.attempts / n },
   { label: "Attack Eff", value: (m) => m.ATTACK.efficiency, seasonValue: (o) => o.ATTACK.efficiency, isPct: true },
   { label: "Aces", value: (m) => m.SERVE.success, seasonValue: (o, n) => o.SERVE.success / n },
-  { label: "Passer Rating", value: (m) => m.avgPassRating, seasonValue: (o) => o.avgPassRating },
+  { label: "Rec. Avg", value: (m) => m.avgPassRating, seasonValue: (o) => o.avgPassRating },
   {
-    label: "Good Rec%",
+    label: "Good Rec %",
     value: (m) => m.goodReceivePct,
     seasonValue: (o) => o.goodReceivePct,
     isPct: true,
   },
-  { label: "Rec Total", value: (m) => m.RECEPTION.attempts, seasonValue: (o, n) => o.RECEPTION.attempts / n },
   {
-    label: "Rec Err%",
+    label: "Rec Err %",
     value: (m) => ratio(m.RECEPTION.error, m.RECEPTION.attempts),
     seasonValue: (o) => ratio(o.RECEPTION.error, o.RECEPTION.attempts),
     isPct: true,
   },
+  { label: "Total Rec.", value: (m) => m.RECEPTION.attempts, seasonValue: (o, n) => o.RECEPTION.attempts / n },
   { label: "Digs", value: (m) => m.DIG.success, seasonValue: (o, n) => o.DIG.success / n },
   { label: "Blocks", value: (m) => m.BLOCK.success, seasonValue: (o, n) => o.BLOCK.success / n },
   { label: "Assists", value: (m) => m.SET.success, seasonValue: (o, n) => o.SET.success / n },
@@ -127,7 +127,7 @@ export function ProgressComparisonCard({
   );
 
   if (mode === "overall") {
-    const chartData = ROWS.filter((row) => !row.isPct && row.label !== "Passer Rating").map((row) => ({
+    const chartData = ROWS.filter((row) => !row.isPct && row.label !== "Rec. Avg").map((row) => ({
       stat: row.label,
       "Career Total": row.value(overall) ?? 0,
     }));
@@ -189,9 +189,9 @@ export function ProgressComparisonCard({
         ? null
         : buckets.find((b) => b.key === keyB) ?? null;
 
-  // Volume stats only — Attack Eff (%) and Passer Rating (0-3) are on different scales and would be
+  // Volume stats only — Attack Eff (%) and Rec. Avg (0-3) are on different scales and would be
   // unreadable squashed next to counts like Points, so they stay table-only below.
-  const chartData = ROWS.filter((row) => !row.isPct && row.label !== "Passer Rating").map((row) => ({
+  const chartData = ROWS.filter((row) => !row.isPct && row.label !== "Rec. Avg").map((row) => ({
     stat: row.label,
     [bucketA.label]: row.value(bucketA.metrics) ?? 0,
     ...(bucketB ? { [bucketB.label]: row.value(bucketB.metrics) ?? 0 } : {}),

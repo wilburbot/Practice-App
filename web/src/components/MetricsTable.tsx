@@ -27,15 +27,15 @@ export function MetricsTable({
             <th className="py-2 pr-3">Player</th>
             <th className="py-2 px-2 text-right">Kills</th>
             <th className="py-2 px-2 text-right">Att Err</th>
-            <th className="py-2 px-2 text-right">Att</th>
+            <th className="py-2 px-2 text-right">Total Att</th>
             <th className="py-2 px-2 text-right">Att Eff</th>
             <th className="py-2 px-2 text-right">Aces</th>
             <th className="py-2 px-2 text-right">Srv Err</th>
-            <th className="py-2 px-2 text-right">Serves</th>
-            <th className="py-2 px-2 text-right">Pass Rtg</th>
-            <th className="py-2 px-2 text-right">Good Rec%</th>
-            <th className="py-2 px-2 text-right">Rec Total</th>
-            <th className="py-2 px-2 text-right">Rec Err%</th>
+            <th className="py-2 px-2 text-right">Total Srvs</th>
+            <th className="py-2 px-2 text-right">Rec. Avg</th>
+            <th className="py-2 px-2 text-right">Good Rec %</th>
+            <th className="py-2 px-2 text-right">Rec Err %</th>
+            <th className="py-2 px-2 text-right">Total Rec.</th>
             <th className="py-2 px-2 text-right">Digs</th>
             <th className="py-2 px-2 text-right">Blocks</th>
             <th className="py-2 px-2 text-right">Assists</th>
@@ -64,10 +64,10 @@ export function MetricsTable({
               <td className="py-2 px-2 text-right">{row.metrics.SERVE.attempts}</td>
               <td className="py-2 px-2 text-right">{fmtRating(row.metrics.avgPassRating)}</td>
               <td className="py-2 px-2 text-right">{fmtPct(row.metrics.goodReceivePct)}</td>
-              <td className="py-2 px-2 text-right">{row.metrics.RECEPTION.attempts}</td>
               <td className="py-2 px-2 text-right">
                 {fmtPct(ratio(row.metrics.RECEPTION.error, row.metrics.RECEPTION.attempts))}
               </td>
+              <td className="py-2 px-2 text-right">{row.metrics.RECEPTION.attempts}</td>
               <td className="py-2 px-2 text-right">{row.metrics.DIG.success}</td>
               <td className="py-2 px-2 text-right">{row.metrics.BLOCK.success}</td>
               <td className="py-2 px-2 text-right">{row.metrics.SET.success}</td>
