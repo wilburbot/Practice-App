@@ -8,7 +8,7 @@ export const statsRouter = Router();
 statsRouter.use(requireAuth);
 
 const ACTION_TYPES = ["ATTACK", "SERVE", "RECEPTION", "DIG", "BLOCK", "SET"] as const;
-const RESULTS = ["SUCCESS", "ERROR", "ATTEMPT"] as const;
+const RESULTS = ["SUCCESS", "ERROR", "ATTEMPT", "BLOCKED"] as const;
 const SERVING_TEAMS = ["OWN", "OPPONENT"] as const;
 
 const statEventSchema = z.object({

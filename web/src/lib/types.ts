@@ -1,6 +1,6 @@
 export type SessionType = "PRACTICE" | "MATCH" | "SCRIMMAGE";
 export type ActionType = "ATTACK" | "SERVE" | "RECEPTION" | "DIG" | "BLOCK" | "SET";
-export type ActionResult = "SUCCESS" | "ERROR" | "ATTEMPT";
+export type ActionResult = "SUCCESS" | "ERROR" | "ATTEMPT" | "BLOCKED";
 export type ServingTeam = "OWN" | "OPPONENT";
 
 export interface User {
@@ -126,6 +126,8 @@ export interface PlayerMetrics {
   totalErrors: number;
   totalAttempts: number;
   avgPassRating: number | null;
+  /** Share of graded receptions rated 2 or 3 (Good/Perfect) — excludes rating-1 (Poor) passes. */
+  goodReceivePct: number | null;
 }
 
 export interface ServingSplitStat {
@@ -195,6 +197,7 @@ export interface SkillResultBreakdown {
   SUCCESS: number;
   ERROR: number;
   ATTEMPT: number;
+  BLOCKED: number;
 }
 
 export interface SkillPlayerStat {

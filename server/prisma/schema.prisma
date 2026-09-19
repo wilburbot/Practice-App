@@ -125,6 +125,9 @@ enum ActionResult {
   SUCCESS
   ERROR
   ATTEMPT
+  /// Attack was blocked by the opponent — counts toward attack attempts but, unlike ERROR, isn't
+  /// subtracted in the attack efficiency numerator (it's not scored as the hitter's own error)
+  BLOCKED
 }
 
 enum ServingTeam {

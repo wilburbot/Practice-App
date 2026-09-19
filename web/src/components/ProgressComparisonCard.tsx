@@ -21,8 +21,8 @@ const ROWS: Row[] = [
   { label: "Passer Rating", value: (m) => m.avgPassRating, seasonValue: (o) => o.avgPassRating },
   {
     label: "Good Rec%",
-    value: (m) => ratio(m.RECEPTION.success, m.RECEPTION.attempts),
-    seasonValue: (o) => ratio(o.RECEPTION.success, o.RECEPTION.attempts),
+    value: (m) => m.goodReceivePct,
+    seasonValue: (o) => o.goodReceivePct,
     isPct: true,
   },
   { label: "Rec Total", value: (m) => m.RECEPTION.attempts, seasonValue: (o, n) => o.RECEPTION.attempts / n },

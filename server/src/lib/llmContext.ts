@@ -26,7 +26,9 @@ export async function summarizeTeamForLLM(teamId: string): Promise<string> {
   lines.push("Season totals by skill:");
   for (const skill of skills) {
     const r = skill.resultBreakdown;
-    lines.push(`- ${skill.actionType}: ${r.SUCCESS} success, ${r.ERROR} errors, ${r.ATTEMPT} in-play (${skill.attempts} total)`);
+    lines.push(
+      `- ${skill.actionType}: ${r.SUCCESS} success, ${r.ERROR} errors${r.BLOCKED ? `, ${r.BLOCKED} blocked` : ""}, ${r.ATTEMPT} in-play (${skill.attempts} total)`,
+    );
     const top = skill.byPlayer
       .slice(0, 5)
       .map((p) => `${p.player.firstName} ${p.player.lastName} (${p.success})`)

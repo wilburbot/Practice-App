@@ -5,6 +5,7 @@ const RESULT_COLOR: Record<ActionResult, string> = {
   SUCCESS: "#059669",
   ERROR: "#dc2626",
   ATTEMPT: "#64748b",
+  BLOCKED: "#9333ea",
 };
 
 function CourtDiagram({ points }: { points: CourtPoint[] }) {
@@ -69,6 +70,12 @@ export function CourtTendencyChart({ tendencies }: { tendencies: CourtTendencies
               <span className="inline-block w-2 h-2 rounded-full bg-slate-500 mr-1" />
               In Play
             </span>
+            {tab === "attack" && (
+              <span>
+                <span className="inline-block w-2 h-2 rounded-full bg-purple-600 mr-1" />
+                Blocked
+              </span>
+            )}
           </div>
         </>
       ) : (

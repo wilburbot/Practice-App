@@ -6,12 +6,12 @@ const PRE_ROLL_SEC = 4;
 const POST_ROLL_SEC = 2;
 
 const CLIP_LABELS: Record<HighlightClip["actionType"], Record<HighlightClip["result"], string>> = {
-  ATTACK: { SUCCESS: "Kill", ERROR: "Attack Error", ATTEMPT: "Attack" },
-  SERVE: { SUCCESS: "Ace", ERROR: "Serve Error", ATTEMPT: "Serve" },
-  RECEPTION: { SUCCESS: "Good Pass", ERROR: "Reception Error", ATTEMPT: "Reception" },
-  DIG: { SUCCESS: "Dig", ERROR: "Dig Error", ATTEMPT: "Dig" },
-  BLOCK: { SUCCESS: "Block Kill", ERROR: "Block Error", ATTEMPT: "Block" },
-  SET: { SUCCESS: "Assist", ERROR: "Set Error", ATTEMPT: "Set" },
+  ATTACK: { SUCCESS: "Kill", ERROR: "Attack Error", ATTEMPT: "Attack", BLOCKED: "Blocked" },
+  SERVE: { SUCCESS: "Ace", ERROR: "Serve Error", ATTEMPT: "Serve", BLOCKED: "Serve" },
+  RECEPTION: { SUCCESS: "Good Pass", ERROR: "Reception Error", ATTEMPT: "Reception", BLOCKED: "Reception" },
+  DIG: { SUCCESS: "Dig", ERROR: "Dig Error", ATTEMPT: "Dig", BLOCKED: "Dig" },
+  BLOCK: { SUCCESS: "Block Kill", ERROR: "Block Error", ATTEMPT: "Block", BLOCKED: "Block" },
+  SET: { SUCCESS: "Assist", ERROR: "Set Error", ATTEMPT: "Set", BLOCKED: "Set" },
 };
 
 export function HighlightReelCard({ clips }: { clips: HighlightClip[] }) {

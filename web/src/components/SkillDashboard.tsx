@@ -15,16 +15,19 @@ import {
 } from "recharts";
 import type { ActionType, SkillBreakdownEntry } from "../lib/types";
 
-const SKILL_LABELS: Record<ActionType, { title: string; success: string; error: string; attempt: string }> = {
-  ATTACK: { title: "Attack", success: "Kills", error: "Errors", attempt: "In Play" },
-  SERVE: { title: "Serve", success: "Aces", error: "Errors", attempt: "In Play" },
-  RECEPTION: { title: "Reception", success: "Good Passes", error: "Errors", attempt: "In Play" },
-  DIG: { title: "Dig", success: "Digs", error: "Errors", attempt: "In Play" },
-  BLOCK: { title: "Block", success: "Block Kills", error: "Errors", attempt: "In Play" },
-  SET: { title: "Set", success: "Assists", error: "Errors", attempt: "In Play" },
+const SKILL_LABELS: Record<
+  ActionType,
+  { title: string; success: string; error: string; attempt: string; blocked: string }
+> = {
+  ATTACK: { title: "Attack", success: "Kills", error: "Errors", attempt: "In Play", blocked: "Blocked" },
+  SERVE: { title: "Serve", success: "Aces", error: "Errors", attempt: "In Play", blocked: "Blocked" },
+  RECEPTION: { title: "Reception", success: "Good Passes", error: "Errors", attempt: "In Play", blocked: "Blocked" },
+  DIG: { title: "Dig", success: "Digs", error: "Errors", attempt: "In Play", blocked: "Blocked" },
+  BLOCK: { title: "Block", success: "Block Kills", error: "Errors", attempt: "In Play", blocked: "Blocked" },
+  SET: { title: "Set", success: "Assists", error: "Errors", attempt: "In Play", blocked: "Blocked" },
 };
 
-const RESULT_COLORS = { SUCCESS: "#059669", ERROR: "#dc2626", ATTEMPT: "#cbd5e1" };
+const RESULT_COLORS = { SUCCESS: "#059669", ERROR: "#dc2626", ATTEMPT: "#cbd5e1", BLOCKED: "#9333ea" };
 
 function fmtPct(value: number | null): string {
   return value === null ? "—" : `${Math.round(value * 100)}%`;
@@ -37,6 +40,7 @@ function SkillCard({ skill }: { skill: SkillBreakdownEntry }) {
     [
       { key: "SUCCESS", name: labels.success, value: skill.resultBreakdown.SUCCESS },
       { key: "ERROR", name: labels.error, value: skill.resultBreakdown.ERROR },
+      { key: "BLOCKED", name: labels.blocked, value: skill.resultBreakdown.BLOCKED },
       { key: "ATTEMPT", name: labels.attempt, value: skill.resultBreakdown.ATTEMPT },
     ] as const
   ).filter((d) => d.value > 0);

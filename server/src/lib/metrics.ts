@@ -31,6 +31,11 @@ export interface PlayerMetrics {
   totalAttempts: number;
   /** Average 0-3 passer rating on RECEPTION events that were graded, null if none graded */
   avgPassRating: number | null;
+  /**
+   * Share of graded receptions rated 2 or 3 (Good/Perfect) — excludes rating-1 (Poor) passes,
+   * unlike RECEPTION.success which counts every non-error reception. Null if none graded.
+   */
+  goodReceivePct: number | null;
 }
 
 const ACTION_TYPES: ActionType[] = ["ATTACK", "SERVE", "RECEPTION", "DIG", "BLOCK", "SET"];
@@ -47,6 +52,7 @@ export function computeMetrics(events: StatEventLike[]): PlayerMetrics {
 
   let passRatingSum = 0;
   let passRatingCount = 0;
+  let goodReceiveCount = 0;
 
   for (const event of events) {
     const bucket = byType[event.actionType];
@@ -56,6 +62,7 @@ export function computeMetrics(events: StatEventLike[]): PlayerMetrics {
     if (event.actionType === "RECEPTION" && event.passRating != null) {
       passRatingSum += event.passRating;
       passRatingCount += 1;
+      if (event.passRating >= 2) goodReceiveCount += 1;
     }
   }
 
@@ -68,6 +75,7 @@ export function computeMetrics(events: StatEventLike[]): PlayerMetrics {
   const totalErrors = ACTION_TYPES.reduce((sum, t) => sum + byType[t].error, 0);
   const totalAttempts = ACTION_TYPES.reduce((sum, t) => sum + byType[t].attempts, 0);
   const avgPassRating = passRatingCount > 0 ? passRatingSum / passRatingCount : null;
+  const goodReceivePct = passRatingCount > 0 ? goodReceiveCount / passRatingCount : null;
 
   return {
     ...(byType as PlayerMetrics),
@@ -75,6 +83,7 @@ export function computeMetrics(events: StatEventLike[]): PlayerMetrics {
     totalErrors,
     totalAttempts,
     avgPassRating,
+    goodReceivePct,
   };
 }
 

@@ -20,7 +20,7 @@ const ROWS: Row[] = [
   { label: "Att", value: (m) => m.ATTACK.attempts },
   { label: "Attack Eff", value: (m) => m.ATTACK.efficiency, isPct: true },
   { label: "Aces", value: (m) => m.SERVE.success },
-  { label: "Good Rec%", value: (m) => ratio(m.RECEPTION.success, m.RECEPTION.attempts), isPct: true },
+  { label: "Good Rec%", value: (m) => m.goodReceivePct, isPct: true },
   { label: "Rec Total", value: (m) => m.RECEPTION.attempts },
   { label: "Rec Err%", value: (m) => ratio(m.RECEPTION.error, m.RECEPTION.attempts), isPct: true },
   { label: "Digs", value: (m) => m.DIG.success },
@@ -70,6 +70,7 @@ function combineTeamMetrics(list: Week[], divisor: number): PlayerMetrics {
   const totalErrors = list.reduce((s, w) => s + w.team.totalErrors, 0);
   const totalAttempts = list.reduce((s, w) => s + w.team.totalAttempts, 0);
   const passRatings = list.map((w) => w.team.avgPassRating).filter((v): v is number => v != null);
+  const goodReceivePcts = list.map((w) => w.team.goodReceivePct).filter((v): v is number => v != null);
 
   return {
     ATTACK: avgAction(list, "ATTACK", divisor),
@@ -82,6 +83,9 @@ function combineTeamMetrics(list: Week[], divisor: number): PlayerMetrics {
     totalErrors: totalErrors / divisor,
     totalAttempts: totalAttempts / divisor,
     avgPassRating: passRatings.length ? passRatings.reduce((a, b) => a + b, 0) / passRatings.length : null,
+    goodReceivePct: goodReceivePcts.length
+      ? goodReceivePcts.reduce((a, b) => a + b, 0) / goodReceivePcts.length
+      : null,
   };
 }
 

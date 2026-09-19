@@ -63,9 +63,7 @@ export function MetricsTable({
               <td className="py-2 px-2 text-right">{row.metrics.SERVE.error}</td>
               <td className="py-2 px-2 text-right">{row.metrics.SERVE.attempts}</td>
               <td className="py-2 px-2 text-right">{fmtRating(row.metrics.avgPassRating)}</td>
-              <td className="py-2 px-2 text-right">
-                {fmtPct(ratio(row.metrics.RECEPTION.success, row.metrics.RECEPTION.attempts))}
-              </td>
+              <td className="py-2 px-2 text-right">{fmtPct(row.metrics.goodReceivePct)}</td>
               <td className="py-2 px-2 text-right">{row.metrics.RECEPTION.attempts}</td>
               <td className="py-2 px-2 text-right">
                 {fmtPct(ratio(row.metrics.RECEPTION.error, row.metrics.RECEPTION.attempts))}

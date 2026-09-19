@@ -1,0 +1,1 @@
+ALTER TYPE "ActionResult" ADD VALUE 'BLOCKED';

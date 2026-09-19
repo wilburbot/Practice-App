@@ -219,6 +219,7 @@ export async function buildSkillBreakdown(
       SUCCESS: skillEvents.filter((e) => e.result === "SUCCESS").length,
       ERROR: skillEvents.filter((e) => e.result === "ERROR").length,
       ATTEMPT: skillEvents.filter((e) => e.result === "ATTEMPT").length,
+      BLOCKED: skillEvents.filter((e) => e.result === "BLOCKED").length,
     };
 
     const byPlayerMap = new Map<

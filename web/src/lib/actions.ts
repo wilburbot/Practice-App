@@ -16,6 +16,7 @@ export const ACTION_GROUPS: { title: string; buttons: ActionButton[] }[] = [
     buttons: [
       { actionType: "ATTACK", result: "SUCCESS", label: "Kill", className: "bg-emerald-600" },
       { actionType: "ATTACK", result: "ATTEMPT", label: "In Play", className: "bg-slate-500" },
+      { actionType: "ATTACK", result: "BLOCKED", label: "Blocked", className: "bg-purple-600" },
       { actionType: "ATTACK", result: "ERROR", label: "Error", className: "bg-red-600" },
     ],
   },
