@@ -36,8 +36,8 @@ export function ShareLinkCard({ teamId }: { teamId: string }) {
     <div className="bg-white border rounded-xl p-4">
       <h2 className="font-semibold text-court-dark mb-1">Share With Players &amp; Parents</h2>
       <p className="text-sm text-slate-500 mb-3">
-        Send this link so they can view the dashboard, sessions, and video — no login needed. Anyone with the
-        link can view, so only share it with your team.
+        Send this link so they can view the dashboard, sessions, and video. No login needed. Anyone with the
+        link can view it, so share it only with your team.
       </p>
       {isLoading ? (
         <p className="text-sm text-slate-400">Loading link…</p>

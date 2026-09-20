@@ -181,13 +181,21 @@ export function LiveTrackingPage() {
       {/* Camera */}
       <div className="bg-white border rounded-xl p-3 flex flex-col gap-2">
         {recordingElsewhere ? (
-          <p className="text-sm text-slate-600">
-            🔴 Another coach is recording this session
-            {session.activeVideoStartedAt &&
-              ` (started ${new Date(session.activeVideoStartedAt).toLocaleTimeString()})`}{" "}
-            — your
-            stat taps are syncing to that video automatically. Only one device should hold the camera at a time.
-          </p>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-slate-600">
+              🔴 Another device is recording this session
+              {session.activeVideoStartedAt &&
+                ` (started ${new Date(session.activeVideoStartedAt).toLocaleTimeString()})`}
+              . Your stat taps sync automatically to that video. Only one device can hold the camera at a time.
+            </p>
+            <button
+              onClick={() => markRecordingStopped.mutate()}
+              disabled={markRecordingStopped.isPending}
+              className="tap-target self-start border rounded-lg px-3 py-2 text-sm font-semibold text-slate-600"
+            >
+              {markRecordingStopped.isPending ? "Releasing…" : "Recording already stopped? Tap here to free up the camera"}
+            </button>
+          </div>
         ) : (
           <>
             <video ref={videoRef} muted playsInline className="w-full max-h-64 bg-black rounded-lg object-contain" />

@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { BrandMark } from "./BrandMark";
 
@@ -18,10 +18,13 @@ export function NavBar() {
       <div className="h-1 bg-court" />
       <div className="px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-5 flex-wrap">
-          <span className="flex items-center gap-2 font-bold text-lg tracking-tight text-slate-900">
+          <Link
+            to="/"
+            className="tap-target flex items-center gap-2 font-bold text-lg tracking-tight text-slate-900"
+          >
             <BrandMark />
             Pacman
-          </span>
+          </Link>
           <nav className="flex gap-4">
             {links.map((link) => (
               <NavLink

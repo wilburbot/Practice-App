@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { api, getToken, setToken } from "./api";
+import { TEAM_KEY } from "./team";
 import type { User } from "./types";
 
 interface AuthContextValue {
@@ -46,6 +47,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setToken(null);
     localStorage.removeItem(USER_KEY);
+    // Clear the last-selected team too — on a shared device, the next person to log in should
+    // never land on a team picked by whoever used it before them, even briefly.
+    localStorage.removeItem(TEAM_KEY);
     setUser(null);
   };
 

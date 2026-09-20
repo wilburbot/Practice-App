@@ -6,7 +6,7 @@ interface TeamContextValue {
 }
 
 const TeamContext = createContext<TeamContextValue | null>(null);
-const TEAM_KEY = "vbcoach.currentTeamId";
+export const TEAM_KEY = "vbcoach.currentTeamId";
 
 export function TeamProvider({ children }: { children: ReactNode }) {
   const [teamId, setTeamIdState] = useState<string | null>(() => localStorage.getItem(TEAM_KEY));

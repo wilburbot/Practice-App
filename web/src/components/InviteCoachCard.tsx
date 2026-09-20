@@ -36,8 +36,8 @@ export function InviteCoachCard({ teamId }: { teamId: string }) {
     <div className="bg-white border rounded-xl p-4">
       <h2 className="font-semibold text-court-dark mb-1">Invite an Assistant Coach</h2>
       <p className="text-sm text-slate-500 mb-3">
-        Send this link to another coach. Once they sign up or log in and open it, they get full edit access —
-        they can log stats live alongside you on the same session, manage the roster, and start sessions.
+        Send this link to another coach. Once they sign up or log in and open it, they get full edit access.
+        They can log stats live alongside you on the same session, manage the roster, and start sessions.
       </p>
       {isLoading ? (
         <p className="text-sm text-slate-400">Loading link…</p>
