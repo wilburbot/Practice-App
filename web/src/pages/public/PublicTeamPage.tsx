@@ -7,6 +7,7 @@ import type { Player, PlayerProgress, Session, TeamWeekly } from "../../lib/type
 import { MetricsTable } from "../../components/MetricsTable";
 import { HighlightReelCard } from "../../components/HighlightReelCard";
 import { TeamWeekComparisonCard } from "../../components/TeamWeekComparisonCard";
+import { PlayerAvatar } from "../../components/PlayerAvatar";
 
 export function PublicTeamPage() {
   const { shareToken } = useParams<{ shareToken: string }>();
@@ -94,6 +95,19 @@ export function PublicTeamPage() {
           </select>
         </label>
       </div>
+
+      {playerId && playerProgress && (
+        <div className="bg-white border rounded-xl p-4 flex items-center gap-3">
+          <PlayerAvatar player={playerProgress.player} size={56} />
+          <div>
+            <h2 className="font-semibold text-court-dark">
+              {playerProgress.player.jerseyNumber != null ? `#${playerProgress.player.jerseyNumber} ` : ""}
+              {playerProgress.player.firstName} {playerProgress.player.lastName}
+            </h2>
+            <p className="text-sm text-slate-500">{playerProgress.player.position}</p>
+          </div>
+        </div>
+      )}
 
       {playerId && playerProgress && <HighlightReelCard clips={playerProgress.clips} />}
 
