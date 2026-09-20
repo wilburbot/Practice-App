@@ -4,6 +4,7 @@ import { Link, Navigate } from "react-router-dom";
 import { api } from "../lib/api";
 import { useCurrentTeam } from "../lib/team";
 import type { Player } from "../lib/types";
+import { PlayerAvatar } from "../components/PlayerAvatar";
 
 const POSITIONS = ["Outside Hitter", "Opposite", "Middle Blocker", "Setter", "Libero", "DS"];
 
@@ -111,12 +112,15 @@ export function RosterPage() {
                 player.active ? "bg-white" : "bg-slate-100 opacity-60"
               }`}
             >
-              <Link to={`/players/${player.id}`} className="flex-1">
-                <span className="font-semibold">
-                  {player.jerseyNumber != null && `#${player.jerseyNumber} `}
-                  {player.firstName} {player.lastName}
+              <Link to={`/players/${player.id}`} className="flex-1 flex items-center gap-3">
+                <PlayerAvatar player={player} size={40} />
+                <span>
+                  <span className="font-semibold block">
+                    {player.jerseyNumber != null && `#${player.jerseyNumber} `}
+                    {player.firstName} {player.lastName}
+                  </span>
+                  <span className="block text-sm text-slate-500">{player.position}</span>
                 </span>
-                <span className="block text-sm text-slate-500">{player.position}</span>
               </Link>
               <button
                 onClick={() => toggleActive.mutate(player)}

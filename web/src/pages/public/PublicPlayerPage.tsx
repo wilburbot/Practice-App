@@ -16,6 +16,7 @@ import { MetricsTable } from "../../components/MetricsTable";
 import { ProgressComparisonCard } from "../../components/ProgressComparisonCard";
 import { CourtTendencyChart } from "../../components/CourtTendencyChart";
 import { HighlightReelCard } from "../../components/HighlightReelCard";
+import { PlayerAvatar } from "../../components/PlayerAvatar";
 
 export function PublicPlayerPage() {
   const { shareToken, playerId } = useParams<{ shareToken: string; playerId: string }>();
@@ -44,12 +45,15 @@ export function PublicPlayerPage() {
   return (
     <div className="p-4 max-w-4xl mx-auto flex flex-col gap-6">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-xl font-bold text-court-dark">
-            {player.jerseyNumber != null ? `#${player.jerseyNumber} ` : ""}
-            {player.firstName} {player.lastName}
-          </h1>
-          <p className="text-sm text-slate-500">{player.position}</p>
+        <div className="flex items-center gap-3">
+          <PlayerAvatar player={player} size={56} />
+          <div>
+            <h1 className="text-xl font-bold text-court-dark">
+              {player.jerseyNumber != null ? `#${player.jerseyNumber} ` : ""}
+              {player.firstName} {player.lastName}
+            </h1>
+            <p className="text-sm text-slate-500">{player.position}</p>
+          </div>
         </div>
         <Link to={`/share/${shareToken}`} className="tap-target border rounded-lg px-3 py-2 text-sm font-semibold">
           ← All Sessions

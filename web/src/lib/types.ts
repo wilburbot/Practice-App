@@ -50,6 +50,7 @@ export interface Player {
   lastName: string;
   jerseyNumber: number | null;
   position: string | null;
+  photoUrl: string | null;
   active: boolean;
   createdAt: string;
 }

@@ -54,6 +54,7 @@ model Player {
   lastName      String
   jerseyNumber  Int?
   position      String?
+  photoUrl      String?
   active        Boolean     @default(true)
   createdAt     DateTime    @default(now())
   statEvents    StatEvent[]

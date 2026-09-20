@@ -16,6 +16,7 @@ import { MetricsTable } from "../components/MetricsTable";
 import { ProgressComparisonCard } from "../components/ProgressComparisonCard";
 import { CourtTendencyChart } from "../components/CourtTendencyChart";
 import { HighlightReelCard } from "../components/HighlightReelCard";
+import { PlayerDetailsCard } from "../components/PlayerDetailsCard";
 
 export function PlayerProgressPage() {
   const { playerId } = useParams<{ playerId: string }>();
@@ -43,13 +44,7 @@ export function PlayerProgressPage() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-bold text-court-dark">
-          {player.jerseyNumber != null ? `#${player.jerseyNumber} ` : ""}
-          {player.firstName} {player.lastName}
-        </h1>
-        <p className="text-sm text-slate-500">{player.position}</p>
-      </div>
+      <PlayerDetailsCard player={player} />
 
       <div className="bg-white border rounded-xl p-4">
         <h2 className="font-semibold text-court-dark mb-3">Career Totals</h2>
